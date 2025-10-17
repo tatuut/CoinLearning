@@ -287,7 +287,7 @@ class BreakoutStrategy:
         """
         市場をスキャンしてブレイクアウトを検知
         """
-        print("🔍 ブレイクアウトをスキャン中...")
+        print("[*] ブレイクアウトをスキャン中...")
 
         trending = self.api.get_trending_coins(min_volume_usdt=min_volume_usdt)
 
@@ -305,8 +305,8 @@ class BreakoutStrategy:
 
             if result['signal']:
                 breakouts.append(result)
-                squeeze_mark = "🔥" if result['squeeze'] else ""
-                print(f"  ✅ {symbol} {squeeze_mark}: RSI {result['rsi']:.1f}, "
+                squeeze_mark = "[SQUEEZE]" if result['squeeze'] else ""
+                print(f"  [OK] {symbol} {squeeze_mark}: RSI {result['rsi']:.1f}, "
                       f"バンド幅 {result['bandwidth']:.2f}%")
 
         return breakouts

@@ -199,7 +199,7 @@ class VolumeSpikeStrategy:
         """
         市場をスキャンして出来高急増を検知
         """
-        print("🔍 出来高急増をスキャン中...")
+        print("[*] 出来高急増をスキャン中...")
 
         trending = self.api.get_trending_coins(min_volume_usdt=min_volume_usdt)
 
@@ -217,7 +217,7 @@ class VolumeSpikeStrategy:
 
             if result['signal']:
                 spikes.append(result)
-                print(f"  ✅ {symbol}: 出来高 {result['volume_spike_ratio']:.1f}x, "
+                print(f"  [OK] {symbol}: 出来高 {result['volume_spike_ratio']:.1f}x, "
                       f"価格変動 {result['price_change_24h']:.2f}%")
 
         return spikes
@@ -226,7 +226,7 @@ class VolumeSpikeStrategy:
         """
         急騰＋出来高急増のコインを探す（最も狙い目）
         """
-        print("🔥 激アツコインを検索中...")
+        print("[*] 激アツコインを検索中...")
 
         # 急騰コインを取得
         pumping = self.api.find_pumping_coins(min_change_percent=10.0)

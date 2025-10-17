@@ -206,7 +206,7 @@ class MomentumStrategy:
         """
         市場をスキャンして買いシグナルのあるコインを探す
         """
-        print("🔍 市場をスキャン中...")
+        print("[*] 市場をスキャン中...")
 
         trending = self.api.get_trending_coins(min_volume_usdt=min_volume_usdt)
 
@@ -217,7 +217,7 @@ class MomentumStrategy:
 
             if result['signal']:
                 signals.append(result)
-                print(f"✅ {symbol}: モメンタム {result['momentum']:.2f}%")
+                print(f"[OK] {symbol}: モメンタム {result['momentum']:.2f}%")
 
         return signals
 

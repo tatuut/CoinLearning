@@ -113,6 +113,22 @@ class TradeDatabase:
             )
         ''')
 
+        # 取引分析・メモテーブル（ユーザーとAIの協力分析用）
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS trade_analysis (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                trade_id INTEGER,
+                coin_symbol TEXT,
+                analysis_date TEXT NOT NULL,
+                author TEXT NOT NULL,
+                analysis_type TEXT NOT NULL,
+                content TEXT NOT NULL,
+                tags TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (trade_id) REFERENCES trades(id)
+            )
+        ''')
+
         self.conn.commit()
 
     def add_trade(self, coin_symbol: str, exchange: str, trade_type: str,
@@ -274,6 +290,112 @@ class TradeDatabase:
             LIMIT ?
         ''', (limit,))
         return [dict(row) for row in cursor.fetchall()]
+
+    def add_analysis(self, author: str, analysis_type: str, content: str,
+                    trade_id: int = None, coin_symbol: str = None, tags: List[str] = None) -> int:
+        """分析・メモを追加
+
+        Args:
+            author: 'user' または 'ai'
+            analysis_type: 'pre_trade', 'during_trade', 'post_trade', 'memo', 'lesson'
+            content: 分析内容
+            trade_id: 関連する取引ID（オプション）
+            coin_symbol: コインシンボル（オプション）
+            tags: タグのリスト（オプション）
+        """
+        cursor = self.conn.cursor()
+        analysis_date = datetime.now().isoformat()
+        tags_json = json.dumps(tags) if tags else None
+
+        cursor.execute('''
+            INSERT INTO trade_analysis
+            (trade_id, coin_symbol, analysis_date, author, analysis_type, content, tags)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (trade_id, coin_symbol, analysis_date, author, analysis_type, content, tags_json))
+
+        self.conn.commit()
+        return cursor.lastrowid
+
+    def get_trade_analysis(self, trade_id: int) -> List[Dict]:
+        """特定の取引に関連する分析を取得"""
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            SELECT * FROM trade_analysis
+            WHERE trade_id = ?
+            ORDER BY created_at ASC
+        ''', (trade_id,))
+
+        results = []
+        for row in cursor.fetchall():
+            analysis = dict(row)
+            if analysis['tags']:
+                analysis['tags'] = json.loads(analysis['tags'])
+            results.append(analysis)
+
+        return results
+
+    def get_all_analysis(self, limit: int = 50, analysis_type: str = None) -> List[Dict]:
+        """全ての分析を取得"""
+        cursor = self.conn.cursor()
+
+        if analysis_type:
+            cursor.execute('''
+                SELECT * FROM trade_analysis
+                WHERE analysis_type = ?
+                ORDER BY created_at DESC
+                LIMIT ?
+            ''', (analysis_type, limit))
+        else:
+            cursor.execute('''
+                SELECT * FROM trade_analysis
+                ORDER BY created_at DESC
+                LIMIT ?
+            ''', (limit,))
+
+        results = []
+        for row in cursor.fetchall():
+            analysis = dict(row)
+            if analysis['tags']:
+                analysis['tags'] = json.loads(analysis['tags'])
+            results.append(analysis)
+
+        return results
+
+    def get_coin_analysis(self, coin_symbol: str) -> List[Dict]:
+        """特定のコインに関する全ての分析を取得"""
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            SELECT * FROM trade_analysis
+            WHERE coin_symbol = ?
+            ORDER BY created_at DESC
+        ''', (coin_symbol,))
+
+        results = []
+        for row in cursor.fetchall():
+            analysis = dict(row)
+            if analysis['tags']:
+                analysis['tags'] = json.loads(analysis['tags'])
+            results.append(analysis)
+
+        return results
+
+    def search_analysis(self, keyword: str) -> List[Dict]:
+        """キーワードで分析を検索"""
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            SELECT * FROM trade_analysis
+            WHERE content LIKE ?
+            ORDER BY created_at DESC
+        ''', (f'%{keyword}%',))
+
+        results = []
+        for row in cursor.fetchall():
+            analysis = dict(row)
+            if analysis['tags']:
+                analysis['tags'] = json.loads(analysis['tags'])
+            results.append(analysis)
+
+        return results
 
     def close(self):
         """データベース接続を閉じる"""
