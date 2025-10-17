@@ -15,6 +15,7 @@ from strategies.momentum import MomentumStrategy
 from strategies.volume_spike import VolumeSpikeStrategy
 from strategies.breakout import BreakoutStrategy
 from analysis.performance import PerformanceAnalyzer
+from analysis.report_generator import ReportGenerator
 
 
 class GrassCoinTrader:
@@ -24,6 +25,7 @@ class GrassCoinTrader:
         self.api = BinanceAPI()
         self.db = TradeDatabase()
         self.analyzer = PerformanceAnalyzer()
+        self.report_gen = ReportGenerator()
 
         # 戦略
         self.strategies = {
@@ -44,7 +46,8 @@ class GrassCoinTrader:
         print("  4. パフォーマンス分析")
         print("  5. 学習カリキュラムを表示")
         print("  6. 取引を手動記録")
-        print("  7. 取引分析・メモ（AIと一緒に分析）")
+        print("  7. 取引分析・メモ（システム内で記録）")
+        print("  8. 分析レポート生成（Markdownで対話）★NEW")
         print("  0. 終了")
         print("="*60)
 
@@ -573,6 +576,100 @@ class GrassCoinTrader:
                 print(f"   タグ: {', '.join(analysis['tags'])}")
             print()
 
+    def generate_analysis_report(self):
+        """分析レポート生成（Markdownで対話）"""
+        print("\n" + "="*60)
+        print("[*] 分析レポート生成")
+        print("="*60)
+        print("\n【何のレポートを作成しますか？】")
+        print("  1. 完了した取引の分析レポート")
+        print("  2. 特定コインの市場分析レポート")
+        print("  0. 戻る")
+
+        choice = input("\n選択: ").strip()
+
+        try:
+            if choice == '1':
+                self._generate_trade_report()
+            elif choice == '2':
+                self._generate_market_report()
+        except Exception as e:
+            print(f"\n[NG] エラー: {e}")
+
+    def _generate_trade_report(self):
+        """完了した取引のレポート生成"""
+        print("\n" + "-"*60)
+        print("[*] 取引分析レポート生成")
+        print("-"*60)
+
+        # 完了した取引を表示
+        completed = self.db.get_completed_trades(limit=10)
+
+        if not completed:
+            print("\n完了した取引がありません。")
+            return
+
+        print(f"\n最近の{len(completed)}件の取引:\n")
+        for i, trade in enumerate(completed, 1):
+            pl_mark = "[OK]" if trade['profit_loss'] > 0 else "[NG]"
+            print(f"{i}. {trade['coin_symbol']} - {pl_mark} {trade['profit_loss_percent']:+.2f}%")
+            print(f"   {trade['completed_at'][:10]}")
+
+        # 取引を選択
+        try:
+            selection = int(input("\n分析する取引番号（0で戻る）: ").strip())
+            if selection == 0:
+                return
+            if selection < 1 or selection > len(completed):
+                print("[NG] 無効な番号です")
+                return
+
+            selected_trade = completed[selection - 1]
+            trade_id = selected_trade['buy_trade_id']
+
+            # レポート生成
+            filepath = self.report_gen.generate_trade_report(trade_id=trade_id)
+
+            print("\n" + "="*60)
+            print("✅ レポート生成完了！")
+            print("="*60)
+            print(f"\nファイル: {filepath}")
+            print("\n【次のステップ】")
+            print("1. レポートファイルを開く")
+            print("2. 「分析セクション」にあなたの考えを追記")
+            print("3. Claude Codeにファイルを見せて対話")
+            print("\n例: ")
+            print("  「analysis/reports/xxx.md を読んで、私の分析にフィードバックをください」")
+
+        except ValueError:
+            print("[NG] 数値を入力してください")
+
+    def _generate_market_report(self):
+        """市場分析レポート生成"""
+        print("\n" + "-"*60)
+        print("[*] 市場分析レポート生成")
+        print("-"*60)
+
+        symbol = input("\nコインシンボルを入力（例: PEPEUSDT）: ").strip().upper()
+
+        if not symbol:
+            return
+
+        # レポート生成
+        filepath = self.report_gen.generate_trade_report(coin_symbol=symbol)
+
+        print("\n" + "="*60)
+        print("✅ レポート生成完了！")
+        print("="*60)
+        print(f"\nファイル: {filepath}")
+        print("\n【次のステップ】")
+        print("1. レポートファイルを開く")
+        print("2. 「取引判断セクション」にあなたの考えを追記")
+        print("3. Claude Codeにファイルを見せて対話")
+        print("4. 最終的に取引するか判断")
+        print("\n例: ")
+        print("  「analysis/reports/xxx.md を読んで、私の判断にフィードバックをください」")
+
     def run(self):
         """メインループ"""
         print("\n" + "🌿"*30)
@@ -598,6 +695,8 @@ class GrassCoinTrader:
                 self.record_trade_manually()
             elif choice == '7':
                 self.analyze_trades()
+            elif choice == '8':
+                self.generate_analysis_report()
             elif choice == '0':
                 print("\n👋 お疲れ様でした！また次回！")
                 break
