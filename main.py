@@ -9,7 +9,7 @@ import sys
 from datetime import datetime
 
 # 各モジュールをインポート
-from config.exchange_api import BinanceAPI
+from config.exchange_api import MEXCAPI
 from data.database import TradeDatabase
 from strategies.momentum import MomentumStrategy
 from strategies.volume_spike import VolumeSpikeStrategy
@@ -22,7 +22,7 @@ class GrassCoinTrader:
     """草コイントレーダー"""
 
     def __init__(self):
-        self.api = BinanceAPI()
+        self.api = MEXCAPI()
         self.db = TradeDatabase()
         self.analyzer = PerformanceAnalyzer()
         self.report_gen = ReportGenerator()

@@ -9,7 +9,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from config.exchange_api import BinanceAPI
+from config.exchange_api import MEXCAPI
 import numpy as np
 
 
@@ -22,7 +22,7 @@ class MomentumStrategy:
             lookback_period: モメンタム計算に使う期間（ローソク足の本数）
         """
         self.lookback_period = lookback_period
-        self.api = BinanceAPI()
+        self.api = MEXCAPI()
 
     def calculate_momentum(self, prices: list) -> float:
         """

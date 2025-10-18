@@ -9,7 +9,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from config.exchange_api import BinanceAPI
+from config.exchange_api import MEXCAPI
 import numpy as np
 
 
@@ -22,7 +22,7 @@ class VolumeSpikeStrategy:
             spike_threshold: 出来高急増と判定する倍率（平均の何倍か）
         """
         self.spike_threshold = spike_threshold
-        self.api = BinanceAPI()
+        self.api = MEXCAPI()
 
     def calculate_volume_spike(self, volumes: list) -> dict:
         """

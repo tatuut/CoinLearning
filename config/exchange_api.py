@@ -275,6 +275,240 @@ class BinanceAPI(ExchangeAPI):
             return {'error': str(e)}
 
 
+class MEXCAPI(ExchangeAPI):
+    """MEXC API"""
+
+    BASE_URL = 'https://api.mexc.com'
+
+    def __init__(self, api_key: str = None, api_secret: str = None):
+        super().__init__(api_key, api_secret)
+
+    def _sign_request(self, params: Dict) -> str:
+        """リクエストに署名"""
+        query_string = urlencode(params)
+        signature = hmac.new(
+            self.api_secret.encode('utf-8'),
+            query_string.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
+        return signature
+
+    def get_price(self, symbol: str) -> float:
+        """現在価格を取得（認証不要）"""
+        url = f'{self.BASE_URL}/api/v3/ticker/price'
+        params = {'symbol': symbol}
+
+        try:
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+            data = response.json()
+            return float(data['price'])
+        except Exception as e:
+            print(f"[NG] 価格取得エラー: {e}")
+            return None
+
+    def get_24h_stats(self, symbol: str) -> Dict:
+        """24時間統計を取得（認証不要）"""
+        url = f'{self.BASE_URL}/api/v3/ticker/24hr'
+        params = {'symbol': symbol}
+
+        try:
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+            data = response.json()
+
+            return {
+                'symbol': data['symbol'],
+                'price': float(data['lastPrice']),
+                'price_change_percent': float(data['priceChangePercent']),
+                'high': float(data['highPrice']),
+                'low': float(data['lowPrice']),
+                'volume': float(data['volume']),
+                'quote_volume': float(data['quoteVolume']),
+            }
+        except Exception as e:
+            print(f"[NG] 統計取得エラー: {e}")
+            return None
+
+    def get_klines(self, symbol: str, interval: str = '1h', limit: int = 100) -> List:
+        """
+        ローソク足データを取得（認証不要）
+
+        interval: 1m, 5m, 15m, 30m, 60m, 4h, 1d, 1M
+        """
+        url = f'{self.BASE_URL}/api/v3/klines'
+        params = {
+            'symbol': symbol,
+            'interval': interval,
+            'limit': limit
+        }
+
+        try:
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+            klines = response.json()
+
+            # フォーマット変換
+            formatted = []
+            for k in klines:
+                formatted.append({
+                    'timestamp': k[0],
+                    'open': float(k[1]),
+                    'high': float(k[2]),
+                    'low': float(k[3]),
+                    'close': float(k[4]),
+                    'volume': float(k[5]),
+                })
+
+            return formatted
+        except Exception as e:
+            print(f"[NG] ローソク足取得エラー: {e}")
+            return None
+
+    def get_trending_coins(self, min_volume_usdt: float = 100000) -> List[Dict]:
+        """トレンドコインを取得（出来高が多い順）"""
+        url = f'{self.BASE_URL}/api/v3/ticker/24hr'
+
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            data = response.json()
+
+            # USDT建てのみフィルタ & 出来高でソート
+            usdt_pairs = [
+                {
+                    'symbol': item['symbol'],
+                    'price': float(item['lastPrice']),
+                    'change_percent': float(item['priceChangePercent']),
+                    'volume_usdt': float(item['quoteVolume']),
+                }
+                for item in data
+                if item['symbol'].endswith('USDT') and float(item['quoteVolume']) > min_volume_usdt
+            ]
+
+            # 出来高順にソート
+            usdt_pairs.sort(key=lambda x: x['volume_usdt'], reverse=True)
+
+            return usdt_pairs[:50]  # トップ50
+        except Exception as e:
+            print(f"[NG] トレンドコイン取得エラー: {e}")
+            return []
+
+    def find_pumping_coins(self, min_change_percent: float = 10.0) -> List[Dict]:
+        """急騰中のコインを探す"""
+        url = f'{self.BASE_URL}/api/v3/ticker/24hr'
+
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            data = response.json()
+
+            pumping = [
+                {
+                    'symbol': item['symbol'],
+                    'price': float(item['lastPrice']),
+                    'change_percent': float(item['priceChangePercent']),
+                    'volume_usdt': float(item['quoteVolume']),
+                }
+                for item in data
+                if item['symbol'].endswith('USDT') and
+                float(item['priceChangePercent']) >= min_change_percent
+            ]
+
+            # 変動率順にソート
+            pumping.sort(key=lambda x: x['change_percent'], reverse=True)
+
+            return pumping
+        except Exception as e:
+            print(f"[NG] 急騰コイン検索エラー: {e}")
+            return []
+
+    def buy(self, symbol: str, quantity: float) -> Dict:
+        """成行買い注文（要認証）"""
+        if not self.api_key or not self.api_secret:
+            return {'error': 'API Key/Secretが設定されていません'}
+
+        url = f'{self.BASE_URL}/api/v3/order'
+        timestamp = int(time.time() * 1000)
+
+        params = {
+            'symbol': symbol,
+            'side': 'BUY',
+            'type': 'MARKET',
+            'quantity': quantity,
+            'timestamp': timestamp,
+        }
+
+        params['signature'] = self._sign_request(params)
+
+        headers = {'X-MEXC-APIKEY': self.api_key}
+
+        try:
+            response = requests.post(url, params=params, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            return {'error': str(e)}
+
+    def sell(self, symbol: str, quantity: float) -> Dict:
+        """成行売り注文（要認証）"""
+        if not self.api_key or not self.api_secret:
+            return {'error': 'API Key/Secretが設定されていません'}
+
+        url = f'{self.BASE_URL}/api/v3/order'
+        timestamp = int(time.time() * 1000)
+
+        params = {
+            'symbol': symbol,
+            'side': 'SELL',
+            'type': 'MARKET',
+            'quantity': quantity,
+            'timestamp': timestamp,
+        }
+
+        params['signature'] = self._sign_request(params)
+
+        headers = {'X-MEXC-APIKEY': self.api_key}
+
+        try:
+            response = requests.post(url, params=params, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            return {'error': str(e)}
+
+    def get_account_balance(self) -> Dict:
+        """アカウント残高を取得（要認証）"""
+        if not self.api_key or not self.api_secret:
+            return {'error': 'API Key/Secretが設定されていません'}
+
+        url = f'{self.BASE_URL}/api/v3/account'
+        timestamp = int(time.time() * 1000)
+
+        params = {'timestamp': timestamp}
+        params['signature'] = self._sign_request(params)
+
+        headers = {'X-MEXC-APIKEY': self.api_key}
+
+        try:
+            response = requests.get(url, params=params, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+
+            balances = {
+                asset['asset']: {
+                    'free': float(asset['free']),
+                    'locked': float(asset['locked']),
+                }
+                for asset in data['balances']
+                if float(asset['free']) > 0 or float(asset['locked']) > 0
+            }
+
+            return balances
+        except Exception as e:
+            return {'error': str(e)}
+
+
 def load_api_credentials(exchange: str = 'binance') -> tuple:
     """
     設定ファイルからAPI認証情報を読み込む

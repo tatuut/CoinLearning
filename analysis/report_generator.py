@@ -11,7 +11,7 @@ from typing import Dict, List, Optional
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from config.exchange_api import BinanceAPI
+from config.exchange_api import MEXCAPI
 from data.database import TradeDatabase
 from strategies.momentum import MomentumStrategy
 from strategies.volume_spike import VolumeSpikeStrategy
@@ -22,7 +22,7 @@ class ReportGenerator:
     """分析レポート生成器"""
 
     def __init__(self):
-        self.api = BinanceAPI()
+        self.api = MEXCAPI()
         self.db = TradeDatabase()
         self.strategies = {
             'momentum': MomentumStrategy(),

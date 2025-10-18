@@ -9,7 +9,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from config.exchange_api import BinanceAPI
+from config.exchange_api import MEXCAPI
 import numpy as np
 
 
@@ -24,7 +24,7 @@ class BreakoutStrategy:
         """
         self.bb_period = bb_period
         self.bb_std = bb_std
-        self.api = BinanceAPI()
+        self.api = MEXCAPI()
 
     def calculate_bollinger_bands(self, prices: list) -> dict:
         """
