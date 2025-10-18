@@ -65,9 +65,26 @@
 
 ### Mission 2: 入金（詳細は省略）
 
-1. Coincheckで500円分のXRPを購入
-2. MEXCに送金
-3. XRPをUSDTに交換
+#### 重要：XRPの送金制限について
+
+XRPはCoincheckから最低20 XRP（約6,300円）必要なため、500円では送金できません。
+代わりに**XLM（Stellar）**を使います。
+
+**XLMのメリット**:
+- 最低送金額: 0.01 XLM（約0.42円）
+- 送金手数料: 0.01 XLM（約0.42円）
+- 500円で購入可能: 約11.9 XLM
+
+#### 入金手順
+
+1. Coincheckで500円分のXLM（Stellar）を購入
+2. MEXCにXLMを送金（最低額クリア、手数料も激安）
+3. MEXCでXLMをUSDTに交換
+
+または、既にXRPを持っている場合：
+```
+Coincheck内で: XRP売却 → 日本円 → XLM購入 → MEXC送金
+```
 
 **ユウタ**: 「よし、入金完了！USDTが3.5ドルある」
 
@@ -650,13 +667,30 @@ python crypto_analyst.py BTC
 ```
 **用途**: 銘柄の全情報を一括取得（価格、ニュース、スコア、チャート）
 
-### 2. detailed_data_collector.py
+### 2. market_scanner.py【新機能】
+```bash
+# 全銘柄の価格を一括取得・DB保存
+python tools/market_scanner.py --scan
+
+# 変動率ランキング表示
+python tools/market_scanner.py --top-movers
+
+# 出来高ランキング表示
+python tools/market_scanner.py --top-volume
+
+# 銘柄検索（例: XRP, XLMの現在価格）
+python tools/market_scanner.py --search XRP
+python tools/market_scanner.py --search XLM
+```
+**用途**: 全銘柄（1500+）の価格を自動収集、DBに保存、ランキング表示
+
+### 3. detailed_data_collector.py
 ```bash
 python data/detailed_data_collector.py SHIB --all-intervals
 ```
 **用途**: 詳細な価格履歴を収集・保存
 
-### 3. timeseries_storage.py
+### 4. timeseries_storage.py
 ```bash
 # データ変換
 python data/timeseries_storage.py --migrate
@@ -666,7 +700,7 @@ python data/timeseries_storage.py --test SHIB
 ```
 **用途**: データをParquet形式に変換し、技術分析
 
-### 4. tests/test_all.py
+### 5. tests/test_all.py
 ```bash
 python tests/test_all.py
 ```

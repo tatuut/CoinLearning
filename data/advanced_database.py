@@ -148,6 +148,28 @@ class AdvancedDatabase:
             )
         ''')
 
+        # 8. 価格スナップショット（全銘柄の価格履歴）
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS price_snapshots (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                symbol TEXT NOT NULL,
+                price REAL NOT NULL,
+                change_24h REAL,
+                volume REAL,
+                quote_volume REAL,
+                high_24h REAL,
+                low_24h REAL,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (symbol) REFERENCES coin_info(symbol)
+            )
+        ''')
+
+        # 価格スナップショットのインデックス
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_price_snapshots_symbol_timestamp
+            ON price_snapshots(symbol, timestamp DESC)
+        ''')
+
         self.conn.commit()
 
     # ========================================
@@ -362,6 +384,51 @@ class AdvancedDatabase:
         ))
         self.conn.commit()
         return cursor.lastrowid
+
+    # ========================================
+    # 価格スナップショット
+    # ========================================
+
+    def save_price_snapshot(self, symbol: str, price: float, change_24h: float = None,
+                           volume: float = None, quote_volume: float = None,
+                           high_24h: float = None, low_24h: float = None) -> int:
+        """価格スナップショットを保存"""
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            INSERT INTO price_snapshots
+            (symbol, price, change_24h, volume, quote_volume, high_24h, low_24h)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (symbol, price, change_24h, volume, quote_volume, high_24h, low_24h))
+        self.conn.commit()
+        return cursor.lastrowid
+
+    def get_latest_prices(self, limit: int = 50) -> List[Dict]:
+        """最新の価格データを取得"""
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            SELECT
+                symbol,
+                price,
+                change_24h,
+                quote_volume,
+                timestamp
+            FROM price_snapshots
+            WHERE timestamp >= datetime('now', '-1 hour')
+            ORDER BY quote_volume DESC
+            LIMIT ?
+        ''', (limit,))
+        return [dict(row) for row in cursor.fetchall()]
+
+    def get_price_history(self, symbol: str, hours: int = 24) -> List[Dict]:
+        """指定銘柄の価格履歴を取得"""
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            SELECT * FROM price_snapshots
+            WHERE symbol = ?
+            AND timestamp >= datetime('now', '-' || ? || ' hours')
+            ORDER BY timestamp DESC
+        ''', (symbol, hours))
+        return [dict(row) for row in cursor.fetchall()]
 
     def close(self):
         """データベース接続を閉じる"""
