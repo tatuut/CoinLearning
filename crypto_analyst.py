@@ -130,9 +130,35 @@ class CryptoAnalyst:
         if context['price']:
             p = context['price']
             print("📊 **現在の市場状況**")
-            print(f"   価格: ${p['current']:,.4f}")
+
+            # 価格のフォーマット（小数点以下の桁数を動的に決定）
+            price = p['current']
+            if price >= 1:
+                price_str = f"${price:,.2f}"
+            elif price >= 0.01:
+                price_str = f"${price:,.4f}"
+            else:
+                price_str = f"${price:,.8f}"
+
+            high_24h = p['high_24h']
+            if high_24h >= 1:
+                high_str = f"${high_24h:,.2f}"
+            elif high_24h >= 0.01:
+                high_str = f"${high_24h:,.4f}"
+            else:
+                high_str = f"${high_24h:,.8f}"
+
+            low_24h = p['low_24h']
+            if low_24h >= 1:
+                low_str = f"${low_24h:,.2f}"
+            elif low_24h >= 0.01:
+                low_str = f"${low_24h:,.4f}"
+            else:
+                low_str = f"${low_24h:,.8f}"
+
+            print(f"   価格: {price_str}")
             print(f"   24h変動: {p['change_24h']:+.2f}%")
-            print(f"   24h高値/安値: ${p['high_24h']:,.4f} / ${p['low_24h']:,.4f}")
+            print(f"   24h高値/安値: {high_str} / {low_str}")
             print(f"   24h出来高: {p['volume']:,.0f} {symbol}")
             print()
 
@@ -216,11 +242,20 @@ class CryptoAnalyst:
             high = max(float(k['high']) for k in chart)
             low = min(float(k['low']) for k in chart)
 
-            print(f"   30日前: ${first_price:,.4f}")
-            print(f"   現在: ${last_price:,.4f}")
+            # 価格フォーマット関数
+            def format_price(p):
+                if p >= 1:
+                    return f"${p:,.2f}"
+                elif p >= 0.01:
+                    return f"${p:,.4f}"
+                else:
+                    return f"${p:,.8f}"
+
+            print(f"   30日前: {format_price(first_price)}")
+            print(f"   現在: {format_price(last_price)}")
             print(f"   変動: {change:+.2f}%")
-            print(f"   期間最高値: ${high:,.4f}")
-            print(f"   期間最安値: ${low:,.4f}")
+            print(f"   期間最高値: {format_price(high)}")
+            print(f"   期間最安値: {format_price(low)}")
             print()
 
         print("="*80)
@@ -246,7 +281,7 @@ class CryptoAnalyst:
         print()
 
     def get_news_detail(self, context: dict, index: int):
-        """特定ニュースの詳細を表示"""
+        """特定ニュースの詳細を表示（Markdown形式）"""
         if not context.get('news'):
             print("ニュースデータがありません")
             return
@@ -262,18 +297,59 @@ class CryptoAnalyst:
         print(f"📰 ニュース詳細 #{index}")
         print("="*80)
         print()
-        print(f"タイトル: {news['title']}")
-        print(f"出典: {news.get('source', 'Unknown')}")
-        print(f"公開日: {news.get('published_date', 'Unknown')}")
-        print(f"URL: {news.get('url', 'N/A')}")
+
+        # Markdown形式で表示
+        print(f"# {news['title']}")
         print()
-        print(f"センチメント: {news.get('sentiment', 'neutral')}")
-        print(f"重要度: {news.get('importance_score', 0):.2f}")
-        print(f"影響力: {news.get('impact_score', 0):.2f}")
+        print(f"**出典**: {news.get('source', 'Unknown')}")
+        print(f"**公開日**: {news.get('published_date', 'Unknown')[:10]}")
+        if news.get('url') and news.get('url') != 'N/A':
+            print(f"**URL**: {news.get('url')}")
         print()
-        print("【本文】")
-        print(news.get('content', ''))
+
+        # センチメント表示
+        sentiment_map = {
+            'very_positive': '📈 非常にポジティブ',
+            'positive': '↗️ ポジティブ',
+            'neutral': '➡️ 中立',
+            'negative': '↘️ ネガティブ',
+            'very_negative': '📉 非常にネガティブ',
+        }
+        sentiment = news.get('sentiment', 'neutral')
+        print(f"**センチメント**: {sentiment_map.get(sentiment, '➡️ 中立')}")
+        print(f"**重要度**: {news.get('importance_score', 0):.2f} / 1.00")
+        print(f"**影響力**: {news.get('impact_score', 0):.2f} / 1.00")
         print()
+
+        print("---")
+        print()
+        print("## 本文")
+        print()
+
+        # 本文を段落ごとに表示
+        content = news.get('content', '')
+        if content:
+            # 段落に分割（改行2回以上で分割）
+            paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]
+            for para in paragraphs:
+                # 長い段落は適度に改行
+                if len(para) > 80:
+                    words = para.split()
+                    current_line = ""
+                    for word in words:
+                        if len(current_line) + len(word) + 1 > 80:
+                            print(current_line)
+                            current_line = word
+                        else:
+                            current_line = current_line + " " + word if current_line else word
+                    if current_line:
+                        print(current_line)
+                else:
+                    print(para)
+                print()
+        else:
+            print("（本文なし）")
+
         print("="*80)
 
     def compare_with_chart(self, context: dict):
