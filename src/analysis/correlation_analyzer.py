@@ -8,7 +8,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from data.timeseries_storage import TimeSeriesStorage
+from src.data.timeseries_storage import TimeSeriesStorage
 import pandas as pd
 import numpy as np
 

@@ -10,8 +10,8 @@ import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from config.exchange_api import MEXCAPI
-from data.advanced_database import AdvancedDatabase
+from src.config.exchange_api import MEXCAPI
+from src.data.advanced_database import AdvancedDatabase
 from datetime import datetime
 import time
 import argparse

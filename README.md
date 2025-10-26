@@ -247,15 +247,31 @@ Week 3: ニュース分析    ←→  Chapter 5: ARIMA/GARCH
 
 ```
 grass-coin-trader/
-├── crypto_analyst.py               # 統合分析ダッシュボード
-├── main.py                          # 旧メインシステム
+├── crypto_analyst.py               # 統合分析ダッシュボード（メインツール）
+│
+├── src/                             # 🔧 全システムコード
+│   ├── analysis/                   # 分析エンジン
+│   │   ├── intelligence_system.py
+│   │   ├── scoring_engine.py
+│   │   ├── correlation_analyzer.py
+│   │   └── news_collector.py
+│   │
+│   ├── data/                       # データ管理
+│   │   ├── advanced_database.py
+│   │   ├── timeseries_manager.py
+│   │   └── timeseries/
+│   │       └── prices/             # Parquetファイル
+│   │
+│   ├── config/                     # 設定
+│   │   └── exchange_api.py
+│   │
+│   └── tools/                      # ユーティリティ
+│       └── market_scanner.py
 │
 ├── curriculum/                      # 📚 学習者向け教材
-│   ├── README.md                    # 教材全体ガイド
-│   ├── week1_basics.md              # Week 1: 100円チャレンジ開始
-│   │
-│   └── stories/                     # 📖 Chapter形式（技術ストーリー）
-│       ├── README.md                # Chapter形式ガイド
+│   ├── README.md
+│   ├── week1_basics.md
+│   └── stories/                     # Chapter形式（技術ストーリー）
 │       ├── 01_investment_strategy.md
 │       ├── 02_rsi_invention.md
 │       ├── 03_macd_invention.md
@@ -263,36 +279,13 @@ grass-coin-trader/
 │       ├── 05_arima_garch_discovery.md
 │       └── 06_integrated_analysis.md
 │
-├── docs/                            # 🔧 システム開発・保守ドキュメント
-│   ├── analysis_workflow.md         # システムの使い方
-│   ├── data_collection_guide.md     # データ収集方法
-│   ├── parquet_explained.md         # Parquet技術説明
-│   ├── system_redesign_proposal.md  # システム設計書
-│   │
-│   └── meta/                        # 📝 メタドキュメント（教材作成者向け）
-│       ├── curriculum_creation_guide.md # 教材作成ガイド
-│       └── samples/                 # 詳細サンプル
-│           ├── chapter_format_detailed_example.md
-│           └── week_format_detailed_example.md
-│
-├── config/
-│   └── exchange_api.py              # MEXC API連携
-│
-├── data/
-│   ├── advanced_database.py         # SQLiteデータベース
-│   ├── detailed_data_collector.py   # 詳細データ収集
-│   ├── timeseries_storage.py        # Parquet時系列ストレージ
-│   └── timeseries/
-│       └── prices/                  # Parquetファイル保存場所
-│           ├── BTC_1d.parquet
-│           ├── BTC_4h.parquet
-│           └── ...
-│
-└── analysis/
-    ├── intelligence_system.py       # インテリジェンスシステム
-    ├── scoring_engine.py            # スコアリングエンジン
-    ├── correlation_analyzer.py      # 相関分析ツール
-    └── news_collector.py            # ニュース収集
+└── docs/                            # 📖 ドキュメント + 参照系
+    ├── analysis_workflow.md
+    ├── data_collection_guide.md
+    ├── meta/                        # 教材作成者向け
+    │   └── curriculum_creation_guide.md
+    ├── tests/                       # テストコード
+    └── archive/                     # 旧システム（参考）
 ```
 
 ---

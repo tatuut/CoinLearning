@@ -9,8 +9,8 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from data.advanced_database import AdvancedDatabase
-from config.exchange_api import MEXCAPI
+from src.data.advanced_database import AdvancedDatabase
+from src.config.exchange_api import MEXCAPI
 from datetime import datetime, timedelta
 import json
 import sqlite3

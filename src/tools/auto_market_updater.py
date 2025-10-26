@@ -10,7 +10,7 @@ import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tools.market_scanner import MarketScanner
+from src.tools.market_scanner import MarketScanner
 import time
 import argparse
 from datetime import datetime

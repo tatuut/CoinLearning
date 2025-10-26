@@ -8,9 +8,9 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from data.advanced_database import AdvancedDatabase
-from analysis.news_collector import NewsCollector
-from analysis.scoring_engine import ScoringAnalyzer
+from src.data.advanced_database import AdvancedDatabase
+from src.analysis.news_collector import NewsCollector
+from src.analysis.scoring_engine import ScoringAnalyzer
 from datetime import datetime
 from typing import List, Dict
 

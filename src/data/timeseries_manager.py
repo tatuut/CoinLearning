@@ -12,7 +12,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pystore
 import pandas as pd
 from datetime import datetime, timedelta
-from config.exchange_api import MEXCAPI
+from src.config.exchange_api import MEXCAPI
 from typing import Optional, List
 import time
 
