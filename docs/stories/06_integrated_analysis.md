@@ -696,5 +696,23 @@ Phase 3: 統合判断
 
 **次のステップ**: これらのストーリーを読みながら、実際にコードを実装していく
 
+---
+
+## 🛠️ 実践で使う
+
+統合分析システムを実際の取引で活用する方法：
+- **Week 3: ニュース分析と統合判断**（作成予定） - 全技術を統合した総合判断
+  - Technical 40% + Forecast 30% + Fundamental 30%
+  - BUY/SELL/HOLDの推奨
+  - 理由の明確化
+
+---
+
+**教材を最初から**:
+- 実践: [Week 1](../../curriculum/week1_basics_v2.md)
+- 理解: [Chapter 1](./01_investment_strategy.md)
+
+---
+
 **Powered by Claude Code**
 全ての技術には、それを発明した人の物語がある。

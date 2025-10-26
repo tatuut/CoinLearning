@@ -609,4 +609,14 @@ Band Width = (Upper - Lower) / Middle
 
 ---
 
+## 🛠️ 実践で使う
+
+Bollinger Bandsを実際の取引で活用する方法：
+- **Week 2: テクニカル分析の実践**（作成予定） - BBでボラティリティとリスクを評価
+  - バンド幅でリスク判断
+  - %Bで買われすぎ/売られすぎ
+  - スクイーズ → ブレイクアウト予測
+
+---
+
 **Next Chapter**: [Chapter 5: ARIMA/GARCHの発見 - 「未来」を数式で予測する](./05_arima_garch_discovery.md)

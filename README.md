@@ -171,14 +171,110 @@ python analysis/correlation_analyzer.py --market BTC ETH DOGE
 
 ---
 
+## 📚 教材構成（100円→1000円チャレンジ）
+
+### 二軸学習アプローチ
+
+**実践（Week形式）** × **理解（Chapter形式）**
+
+```
+📖 実践カリキュラム        📚 技術ストーリー
+curriculum/                docs/stories/
+
+Week 1: 100円開始      ←→  Chapter 1: 投資戦略
+                       ←→  Chapter 2: RSI発明
+Week 2: テクニカル      ←→  Chapter 3: MACD誕生
+                       ←→  Chapter 4: Bollinger Bands
+Week 3: ニュース分析    ←→  Chapter 5: ARIMA/GARCH
+                       ←→  Chapter 6: 統合分析
+
+  ↓ 実際に手を動かす        ↓ なぜ動くか理解する
+```
+
+### Week形式（実践教材）
+
+**対象**: 実際に100円→1000円を達成したい実践者
+
+**内容**: ツールの使い方、具体的な手順、失敗→改善のストーリー
+
+| Week | 目標 | 主な内容 | 状態 |
+|------|------|---------|------|
+| [Week 1](curriculum/week1_basics_v2.md) | 100円→110円 | 取引所登録、初取引 | ✅ 完成 |
+| Week 2 | 110円→150円 | RSI, MACD, BB実践 | 📝 予定 |
+| Week 3 | 150円→300円 | 感情分析、統合判断 | 📝 予定 |
+| Week 4 | 300円→1000円 | システム化、振り返り | 📝 予定 |
+
+詳細: **[curriculum/README.md](curriculum/README.md)**
+
+---
+
+### Chapter形式（技術ストーリー）
+
+**対象**: 技術の「なぜ」「どうやって」を深く理解したい学習者
+
+**内容**: 発明者の物語、数式の意味、実装方法
+
+| Chapter | タイトル | 発明者/技術 | 状態 |
+|---------|---------|------------|------|
+| [1. 投資戦略](docs/stories/01_investment_strategy.md) | ユウタ式スイングトレード | 戦略確立 | ✅ 完成 |
+| [2. RSI](docs/stories/02_rsi_invention.md) | 過熱を数値化した男 | J.W. Wilder (1978) | ✅ 完成 |
+| [3. MACD](docs/stories/03_macd_invention.md) | トレンドを見える化 | G. Appel (1970s) | ✅ 完成 |
+| [4. Bollinger Bands](docs/stories/04_bollinger_bands_invention.md) | リスクを可視化 | J. Bollinger (1980s) | ✅ 完成 |
+| [5. ARIMA/GARCH](docs/stories/05_arima_garch_discovery.md) | 未来を予測 | Box/Engle | ✅ 完成 |
+| [6. 統合分析](docs/stories/06_integrated_analysis.md) | 全てを統合 | - | ✅ 完成 |
+
+詳細: **[docs/stories/README.md](docs/stories/README.md)**
+
+---
+
+### 学習パターン
+
+**パターン1: 実践優先型（初心者向け）**
+1. Week 1 → 実践で100円→104円を体験
+2. Chapter 1-2 → なぜ成功/失敗したか理解
+3. Week 2 → 学んだ技術を使って実践
+
+**パターン2: 理解優先型（中級者向け）**
+1. Chapter 1-6 → 技術を一通り学ぶ
+2. Week 1-4 → 実践で技術を使いこなす
+
+**パターン3: ハイブリッド型（推奨）**
+- Week（実践）→ Chapter（理解）→ Week（実践）...と交互に
+
+---
+
 ## 📁 プロジェクト構成
 
 ```
 grass-coin-trader/
 ├── crypto_analyst.py               # 統合分析ダッシュボード
 ├── main.py                          # 旧メインシステム
+│
+├── curriculum/                      # 📖 Week形式（実践教材）
+│   ├── README.md                    # Week形式ガイド
+│   └── week1_basics_v2.md           # Week 1: 100円チャレンジ開始
+│
+├── docs/
+│   ├── stories/                     # 📚 Chapter形式（技術ストーリー）
+│   │   ├── README.md                # Chapter形式ガイド
+│   │   ├── 01_investment_strategy.md
+│   │   ├── 02_rsi_invention.md
+│   │   ├── 03_macd_invention.md
+│   │   ├── 04_bollinger_bands_invention.md
+│   │   ├── 05_arima_garch_discovery.md
+│   │   └── 06_integrated_analysis.md
+│   │
+│   ├── samples/                     # 詳細サンプル
+│   │   ├── chapter_format_detailed_example.md
+│   │   └── week_format_detailed_example.md
+│   │
+│   ├── curriculum_creation_guide.md # 教材作成ガイド
+│   ├── analysis_workflow.md         # 実践的ワークフロー
+│   └── data_collection_guide.md     # データ収集ガイド
+│
 ├── config/
 │   └── exchange_api.py              # MEXC API連携
+│
 ├── data/
 │   ├── advanced_database.py         # SQLiteデータベース
 │   ├── detailed_data_collector.py   # 詳細データ収集
@@ -188,20 +284,24 @@ grass-coin-trader/
 │           ├── BTC_1d.parquet
 │           ├── BTC_4h.parquet
 │           └── ...
-├── analysis/
-│   ├── intelligence_system.py       # インテリジェンスシステム
-│   ├── scoring_engine.py            # スコアリングエンジン
-│   ├── correlation_analyzer.py      # 相関分析ツール
-│   └── news_collector.py            # ニュース収集
-└── docs/
-    ├── analysis_workflow.md         # 実践的ワークフロー
-    └── data_collection_guide.md     # データ収集ガイド
+│
+└── analysis/
+    ├── intelligence_system.py       # インテリジェンスシステム
+    ├── scoring_engine.py            # スコアリングエンジン
+    ├── correlation_analyzer.py      # 相関分析ツール
+    └── news_collector.py            # ニュース収集
 ```
 
 ---
 
 ## 📚 ドキュメント
 
+### 教材
+- **[curriculum/README.md](curriculum/README.md)** - Week形式（実践教材）ガイド
+- **[docs/stories/README.md](docs/stories/README.md)** - Chapter形式（技術ストーリー）ガイド
+- **[docs/curriculum_creation_guide.md](docs/curriculum_creation_guide.md)** - 教材作成ガイド
+
+### システム
 - **[README_ANALYST.md](README_ANALYST.md)** - 分析アシスタントの概要
 - **[docs/analysis_workflow.md](docs/analysis_workflow.md)** - 実践的な分析ワークフロー
 - **[docs/data_collection_guide.md](docs/data_collection_guide.md)** - 詳細データ収集ガイド

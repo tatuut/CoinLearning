@@ -611,4 +611,14 @@ Histogram = MACD - Signal
 
 ---
 
+## 🛠️ 実践で使う
+
+MACDを実際の取引で活用する方法：
+- **Week 2: テクニカル分析の実践**（作成予定） - MACDでトレンド方向を判断
+  - ゴールデンクロス（買いシグナル）
+  - デッドクロス（売りシグナル）
+  - Histogramでモメンタム確認
+
+---
+
 **Next Chapter**: [Chapter 4: Bollinger Bandsの発明 - 「リスク」を可視化した男](./04_bollinger_bands_invention.md)
