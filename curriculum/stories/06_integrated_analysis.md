@@ -709,7 +709,7 @@ Phase 3: 統合判断
 ---
 
 **教材を最初から**:
-- 実践: [Week 1](../../curriculum/week1_basics_v2.md)
+- 実践: [Week 1](../week1_basics_v2.md)
 - 理解: [Chapter 1](./01_investment_strategy.md)
 
 ---

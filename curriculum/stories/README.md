@@ -16,7 +16,7 @@
 
 | Chapter | タイトル | 発明者/技術 | 対応Week | 状態 |
 |---------|---------|------------|----------|------|
-| [1. 投資戦略の誕生](./01_investment_strategy.md) | ユウタ式スイングトレード | 戦略確立 | [Week 1](../../curriculum/week1_basics_v2.md) | ✅ 完成 |
+| [1. 投資戦略の誕生](./01_investment_strategy.md) | ユウタ式スイングトレード | 戦略確立 | [Week 1](../week1_basics_v2.md) | ✅ 完成 |
 | [2. RSIの発明](./02_rsi_invention.md) | 過熱を数値化した男 | J. Welles Wilder Jr. (1978) | Week 2 | ✅ 完成 |
 | [3. MACDの誕生](./03_macd_invention.md) | トレンドを見える化 | Gerald Appel (1970s) | Week 2 | ✅ 完成 |
 | [4. Bollinger Bandsの発明](./04_bollinger_bands_invention.md) | リスクを可視化 | John Bollinger (1980s) | Week 2 | ✅ 完成 |
@@ -33,7 +33,7 @@
 - Chapter 2（RSI）を読んだ → Week 2でRSIを使った実際の取引を体験
 - Week 1で失敗した → Chapter 1-2でなぜ失敗したか理解
 
-詳しくは [カリキュラム作成ガイド - 使い分け](../curriculum_creation_guide.md#week形式とchapter形式の使い分け) を参照
+詳しくは [カリキュラム作成ガイド - 使い分け](../../docs/meta/curriculum_creation_guide.md#week形式とchapter形式の使い分け) を参照
 
 ---
 
@@ -103,7 +103,7 @@ Week 1の失敗例などで検証、納得感
 
 **発明**: ユウタとミコが確立した独自戦略
 
-**実践**: [Week 1](../../curriculum/week1_basics_v2.md) - 実際の取引で戦略を適用
+**実践**: [Week 1](../week1_basics_v2.md) - 実際の取引で戦略を適用
 
 ---
 
@@ -181,7 +181,7 @@ Week 1の失敗例などで検証、納得感
 
 ## 📝 作成ガイドライン
 
-Chapter形式の教材を作成する際は、[カリキュラム作成ガイド](../curriculum_creation_guide.md#chapter形式の作成手順) を参照してください。
+Chapter形式の教材を作成する際は、[カリキュラム作成ガイド](../../docs/meta/curriculum_creation_guide.md#chapter形式の作成手順) を参照してください。
 
 **重要ポイント**:
 - ✅ ストーリーの臨場感（具体的な時代・場所）
@@ -258,7 +258,7 @@ Chapter 1 → 2 → 3 → 4 → 5 → 6
 ---
 
 **関連リンク**:
-- 実践カリキュラム: [curriculum/](../../curriculum/)
-- カリキュラム作成ガイド: [../curriculum_creation_guide.md](../curriculum_creation_guide.md)
-- 詳細サンプル: [../samples/chapter_format_detailed_example.md](../samples/chapter_format_detailed_example.md)
+- Week形式（実践カリキュラム）: [../README.md](../README.md)
+- カリキュラム作成ガイド: [../../docs/meta/curriculum_creation_guide.md](../../docs/meta/curriculum_creation_guide.md)
+- 詳細サンプル: [../../docs/meta/samples/chapter_format_detailed_example.md](../../docs/meta/samples/chapter_format_detailed_example.md)
 - プロジェクトREADME: [../../README.md](../../README.md)

@@ -1377,13 +1377,13 @@ python data/timeseries_storage.py --test <銘柄>
 今週の取引で使った技術や戦略の**背景・原理**を深く学ぶ：
 
 ### 投資戦略の理解
-- **[Chapter 1: 投資戦略の誕生](../docs/stories/01_investment_strategy.md)**
+- **[Chapter 1: 投資戦略の誕生](./stories/01_investment_strategy.md)**
   - なぜスイングトレードを選んだのか
   - トリプル確認（ファンダ×テクニカル×センチメント）の意味
   - ユウタ式スイングトレード戦略の全体像
 
 ### テクニカル分析の原理（Week 2の予習）
-- **[Chapter 2: RSIの発明](../docs/stories/02_rsi_invention.md)**
+- **[Chapter 2: RSIの発明](./stories/02_rsi_invention.md)**
   - J. Welles Wilder Jr. が1978年に発明
   - なぜ70以上が「買われすぎ」、30以下が「売られすぎ」なのか
   - Week 1で「値動きが激しい」と感じたSHIBをRSIで分析すると？
@@ -1393,7 +1393,7 @@ python data/timeseries_storage.py --test <銘柄>
 - 理解優先型: Chapter 1-2 → Week 1実践
 - ハイブリッド型（推奨）: Week 1 ⇄ Chapter 1-2 を行き来
 
-詳細: **[docs/stories/README.md](../docs/stories/README.md)**
+詳細: **[stories/README.md](./stories/README.md)**
 
 ---
 

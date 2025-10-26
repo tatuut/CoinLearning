@@ -2,7 +2,7 @@
 
 このファイルは、技術習得ストーリー（Chapter形式）の作成方法を示す詳細な記載例です。
 
-**ベース**: `docs/stories/02_rsi_invention.md`（RSIの発明ストーリー）
+**ベース**: `curriculum/stories/02_rsi_invention.md`（RSIの発明ストーリー）
 
 ---
 
@@ -645,4 +645,4 @@ RS = 平均上昇幅 / 平均下落幅（14日間）
 
 - Week形式の詳細サンプル: [week_format_detailed_example.md](./week_format_detailed_example.md)
 - カリキュラム作成ガイド: [../curriculum_creation_guide.md](../curriculum_creation_guide.md)
-- 実際のChapter例: [../stories/02_rsi_invention.md](../stories/02_rsi_invention.md)
+- 実際のChapter例: [../../curriculum/stories/02_rsi_invention.md](../../curriculum/stories/02_rsi_invention.md)

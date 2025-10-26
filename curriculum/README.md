@@ -16,9 +16,9 @@
 
 | Week | タイトル | 目標資金 | 対応Chapter | 主な内容 | 状態 |
 |------|---------|---------|------------|---------|------|
-| [Week 1](./week1_basics_v2.md) | 100円チャレンジ開始 | 100円→110円 | [Chapter 1](../docs/stories/01_investment_strategy.md) | 取引所登録、初取引（SHIB失敗→DOGE成功） | ✅ 完成 |
-| Week 2 | テクニカル分析の実践 | 110円→150円 | [Chapter 2-4](../docs/stories/) | RSI, MACD, Bollinger Bands実践 | 📝 予定 |
-| Week 3 | ニュース分析と統合判断 | 150円→300円 | [Chapter 5-6](../docs/stories/) | 感情分析、ARIMA/GARCH、統合システム | 📝 予定 |
+| [Week 1](./week1_basics_v2.md) | 100円チャレンジ開始 | 100円→110円 | [Chapter 1](./stories/01_investment_strategy.md) | 取引所登録、初取引（SHIB失敗→DOGE成功） | ✅ 完成 |
+| Week 2 | テクニカル分析の実践 | 110円→150円 | [Chapter 2-4](./stories/) | RSI, MACD, Bollinger Bands実践 | 📝 予定 |
+| Week 3 | ニュース分析と統合判断 | 150円→300円 | [Chapter 5-6](./stories/) | 感情分析、ARIMA/GARCH、統合システム | 📝 予定 |
 | Week 4 | システム化と振り返り | 300円→1000円 | - | 自動化、ポートフォリオ、総まとめ | 📝 予定 |
 
 ---
@@ -32,7 +32,7 @@
 - **理解優先型**: Chapter 1-6 → Week 1-4（中級者向け）
 - **ハイブリッド型**: Week → Chapter → Week → Chapter ...（推奨）
 
-詳しくは [カリキュラム作成ガイド - 使い分け](../docs/curriculum_creation_guide.md#week形式とchapter形式の使い分け) を参照
+詳しくは [カリキュラム作成ガイド - 使い分け](../docs/meta/curriculum_creation_guide.md#week形式とchapter形式の使い分け) を参照
 
 ---
 
@@ -96,7 +96,7 @@
 
 ## 📝 作成ガイドライン
 
-Week形式の教材を作成する際は、[カリキュラム作成ガイド](../docs/curriculum_creation_guide.md#week形式の作成手順) を参照してください。
+Week形式の教材を作成する際は、[カリキュラム作成ガイド](../docs/meta/curriculum_creation_guide.md#week形式の作成手順) を参照してください。
 
 **重要ポイント**:
 - ✅ 超詳細な手順（初心者でも迷わない）
@@ -117,6 +117,6 @@ Week形式の教材を作成する際は、[カリキュラム作成ガイド](.
 ---
 
 **関連リンク**:
-- 技術ストーリー: [docs/stories/](../docs/stories/)
-- カリキュラム作成ガイド: [docs/curriculum_creation_guide.md](../docs/curriculum_creation_guide.md)
+- 技術ストーリー: [stories/](./stories/)
+- カリキュラム作成ガイド: [docs/meta/curriculum_creation_guide.md](../docs/meta/curriculum_creation_guide.md)
 - プロジェクトREADME: [../README.md](../README.md)
