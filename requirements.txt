@@ -5,3 +5,5 @@ pyarrow>=12.0.0
 streamlit>=1.28.0
 plotly>=5.17.0
 pystore>=0.1.0
+statsmodels>=0.14.5
+arch>=8.0.0
