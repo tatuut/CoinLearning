@@ -304,7 +304,7 @@ grass-coin-trader/
 - **[curriculum/stories/README.md](curriculum/stories/README.md)** - Chapter形式（技術ストーリー）ガイド
 
 ### システム開発・保守
-- **[README_ANALYST.md](README_ANALYST.md)** - 分析アシスタントの概要
+- **[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)** - プロジェクト構造の詳細説明
 - **[docs/analysis_workflow.md](docs/analysis_workflow.md)** - 実践的な分析ワークフロー
 - **[docs/data_collection_guide.md](docs/data_collection_guide.md)** - 詳細データ収集ガイド
 
