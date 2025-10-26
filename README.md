@@ -10,7 +10,9 @@
 
 - ✅ ワンコマンドで銘柄の全情報を取得
 - ✅ 価格、ニュース、スコアを統合表示
-- ✅ 軽量なParquet形式で時系列データ保存
+- ✅ **自動保存**: 価格→Parquet、ニュース→Markdown
+- ✅ **見やすいUI**: CLIツール + インタラクティブなWebダッシュボード
+- ✅ 軽量なParquet形式で時系列データ保存（89%圧縮）
 - ✅ 複数銘柄の相関分析・ベータ分析
 - ✅ Claude Codeと対話しながら分析
 
@@ -21,7 +23,13 @@
 ### 必要なパッケージ
 
 ```bash
-pip install requests numpy pandas pyarrow
+pip install -r requirements.txt
+```
+
+または個別に:
+
+```bash
+pip install requests numpy pandas pyarrow streamlit plotly pystore
 ```
 
 ### 基本的な使い方
@@ -49,12 +57,17 @@ python analysis/correlation_analyzer.py --market BTC ETH XRP DOGE SHIB
 - 🎯 ニュース影響力スコア（大雑把な目安）
 - 📰 最近のニュース（影響力順）
 - 📉 30日間の価格動向
+- 💾 **自動保存**: 価格データ→Parquet、ニュース原文→Markdown
 
 ```bash
 python crypto_analyst.py BTC
 python crypto_analyst.py ETH --timeline
 python crypto_analyst.py SHIB --news 1
 ```
+
+**自動保存先**:
+- 価格データ: `src/data/timeseries/prices/{SYMBOL}_{INTERVAL}.parquet`
+- ニュース: `data/news/{SYMBOL}/YYYY-MM-DD_HH-MM-SS_{ID}.md`
 
 ### 2. 時系列データストレージ（timeseries_storage.py）
 
@@ -123,6 +136,53 @@ python data/detailed_data_collector.py BTC --export
 ```
 
 **対応時間足**: 1m, 5m, 15m, 30m, 1h, 4h, 1d
+
+### 5. Parquet閲覧ツール（parquet_viewer.py & parquet_dashboard.py）
+
+**保存されたParquetデータを見やすく表示**
+
+#### CLIツール（parquet_viewer.py）
+
+```bash
+# 全ファイル一覧
+python src/tools/parquet_viewer.py --list
+
+# データ表示
+python src/tools/parquet_viewer.py --show BTC 1d --limit 10
+
+# 統計情報
+python src/tools/parquet_viewer.py --stats SHIB 1d
+
+# ASCIIチャート表示
+python src/tools/parquet_viewer.py --chart BTC 1d --limit 20
+
+# 複数銘柄比較
+python src/tools/parquet_viewer.py --compare BTC ETH DOGE --interval 1d
+```
+
+**機能**:
+- ✅ Parquetファイル一覧表示
+- ✅ データテーブル表示
+- ✅ 統計情報（価格・リターン・RSI・ボラティリティ）
+- ✅ ASCIIアートチャート
+- ✅ 複数銘柄の比較・相関係数
+
+#### WebUI（parquet_dashboard.py）
+
+```bash
+# Streamlit起動
+streamlit run src/tools/parquet_dashboard.py
+```
+
+**機能**:
+- ✅ インタラクティブなローソク足チャート（Plotly）
+- ✅ テクニカル指標（RSI, MACD, Bollinger Bands）
+- ✅ 移動平均線（SMA20, SMA50, EMA20）
+- ✅ 統計情報ダッシュボード
+- ✅ データテーブル表示
+- ✅ 保存されたニュース一覧
+
+**ブラウザで http://localhost:8501 にアクセス**
 
 ---
 

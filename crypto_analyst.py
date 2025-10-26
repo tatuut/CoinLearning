@@ -12,7 +12,9 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from src.config.exchange_api import MEXCAPI
 from src.data.advanced_database import AdvancedDatabase
+from src.data.timeseries_storage import TimeSeriesStorage
 from datetime import datetime, timedelta
+from pathlib import Path
 import argparse
 
 
@@ -22,6 +24,11 @@ class CryptoAnalyst:
     def __init__(self):
         self.api = MEXCAPI()
         self.db = AdvancedDatabase()
+        self.storage = TimeSeriesStorage()
+
+        # ニュース保存用ディレクトリ
+        self.news_dir = Path('data/news')
+        self.news_dir.mkdir(parents=True, exist_ok=True)
 
     def get_full_context(self, symbol: str):
         """
@@ -65,6 +72,13 @@ class CryptoAnalyst:
         context['news'] = [dict(n) for n in news_list]
         print(f"   ✓ 取得件数: {len(news_list)}件")
 
+        # ニュース原文をMarkdownで保存
+        if news_list:
+            print(f"   💾 ニュースをMarkdownで保存中...")
+            for news in news_list:
+                self.save_news_to_markdown(symbol, dict(news))
+            print(f"   ✓ 保存完了")
+
         # 3. 影響力スコア
         print("\n📈 [3/4] スコアリング情報取得中...")
         cursor = self.db.conn.cursor()
@@ -105,6 +119,11 @@ class CryptoAnalyst:
             klines = self.api.get_klines(f"{symbol}USDT", interval='1d', limit=30)
             context['chart'] = klines
             print(f"   ✓ 取得期間: 30日分")
+
+            # Parquetに自動保存
+            if klines:
+                print(f"   💾 Parquetに保存中...")
+                self.storage.save_price_data(symbol, '1d', klines)
         except Exception as e:
             print(f"   ✗ チャートデータ取得失敗: {e}")
             context['chart'] = []
@@ -415,6 +434,73 @@ class CryptoAnalyst:
                     print(f"   {sentiment_icon} {news['title'][:60]}...")
 
             print()
+
+    def save_news_to_markdown(self, symbol: str, news: dict):
+        """
+        ニュース原文をMarkdown形式で保存
+
+        保存先: data/news/{symbol}/YYYY-MM-DD_HH-MM-SS_{id}.md
+        """
+        # 銘柄ごとのディレクトリ作成
+        symbol_dir = self.news_dir / symbol
+        symbol_dir.mkdir(exist_ok=True)
+
+        # ファイル名: 公開日時_ID.md
+        pub_date = news.get('published_date', datetime.now().isoformat())
+        try:
+            dt = datetime.fromisoformat(pub_date.replace('Z', '+00:00'))
+            date_str = dt.strftime('%Y-%m-%d_%H-%M-%S')
+        except:
+            date_str = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+
+        news_id = news.get('id', 'unknown')
+        filename = f"{date_str}_{news_id}.md"
+        filepath = symbol_dir / filename
+
+        # 既に保存済みならスキップ
+        if filepath.exists():
+            return
+
+        # センチメントマッピング
+        sentiment_map = {
+            'very_positive': '📈 非常にポジティブ',
+            'positive': '↗️ ポジティブ',
+            'neutral': '➡️ 中立',
+            'negative': '↘️ ネガティブ',
+            'very_negative': '📉 非常にネガティブ',
+        }
+
+        # Markdown作成
+        md_content = f"""# {news.get('title', 'タイトルなし')}
+
+**出典**: {news.get('source', 'Unknown')}
+**公開日**: {pub_date[:19]}
+**URL**: {news.get('url', 'N/A')}
+
+---
+
+## センチメント
+
+{sentiment_map.get(news.get('sentiment', 'neutral'), '➡️ 中立')}
+
+**スコア詳細**:
+- 重要度: {news.get('importance_score', 0):.3f}
+- 影響力: {news.get('impact_score', 0):.3f}
+
+---
+
+## 本文
+
+{news.get('content', '（本文なし）')}
+
+---
+
+**保存日時**: {datetime.now().isoformat()}
+"""
+
+        # ファイル保存
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(md_content)
 
     def close(self):
         """リソースをクローズ"""
