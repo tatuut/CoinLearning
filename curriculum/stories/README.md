@@ -16,7 +16,7 @@
 
 | Chapter | タイトル | 発明者/技術 | 対応Week | 状態 |
 |---------|---------|------------|----------|------|
-| [1. 投資戦略の誕生](./01_investment_strategy.md) | ユウタ式スイングトレード | 戦略確立 | [Week 1](../week1_basics_v2.md) | ✅ 完成 |
+| [1. 投資戦略の誕生](./01_investment_strategy.md) | ユウタ式スイングトレード | 戦略確立 | [Week 1](../week1_basics.md) | ✅ 完成 |
 | [2. RSIの発明](./02_rsi_invention.md) | 過熱を数値化した男 | J. Welles Wilder Jr. (1978) | Week 2 | ✅ 完成 |
 | [3. MACDの誕生](./03_macd_invention.md) | トレンドを見える化 | Gerald Appel (1970s) | Week 2 | ✅ 完成 |
 | [4. Bollinger Bandsの発明](./04_bollinger_bands_invention.md) | リスクを可視化 | John Bollinger (1980s) | Week 2 | ✅ 完成 |
@@ -103,7 +103,7 @@ Week 1の失敗例などで検証、納得感
 
 **発明**: ユウタとミコが確立した独自戦略
 
-**実践**: [Week 1](../week1_basics_v2.md) - 実際の取引で戦略を適用
+**実践**: [Week 1](../week1_basics.md) - 実際の取引で戦略を適用
 
 ---
 

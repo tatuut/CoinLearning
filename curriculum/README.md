@@ -16,7 +16,7 @@
 
 | Week | タイトル | 目標資金 | 対応Chapter | 主な内容 | 状態 |
 |------|---------|---------|------------|---------|------|
-| [Week 1](./week1_basics_v2.md) | 100円チャレンジ開始 | 100円→110円 | [Chapter 1](./stories/01_investment_strategy.md) | 取引所登録、初取引（SHIB失敗→DOGE成功） | ✅ 完成 |
+| [Week 1](./week1_basics.md) | 100円チャレンジ開始 | 100円→110円 | [Chapter 1](./stories/01_investment_strategy.md) | 取引所登録、初取引（SHIB失敗→DOGE成功） | ✅ 完成 |
 | Week 2 | テクニカル分析の実践 | 110円→150円 | [Chapter 2-4](./stories/) | RSI, MACD, Bollinger Bands実践 | 📝 予定 |
 | Week 3 | ニュース分析と統合判断 | 150円→300円 | [Chapter 5-6](./stories/) | 感情分析、ARIMA/GARCH、統合システム | 📝 予定 |
 | Week 4 | システム化と振り返り | 300円→1000円 | - | 自動化、ポートフォリオ、総まとめ | 📝 予定 |

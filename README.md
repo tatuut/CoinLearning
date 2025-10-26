@@ -199,7 +199,7 @@ Week 3: ニュース分析    ←→  Chapter 5: ARIMA/GARCH
 
 | Week | 目標 | 主な内容 | 状態 |
 |------|------|---------|------|
-| [Week 1](curriculum/week1_basics_v2.md) | 100円→110円 | 取引所登録、初取引 | ✅ 完成 |
+| [Week 1](curriculum/week1_basics.md) | 100円→110円 | 取引所登録、初取引 | ✅ 完成 |
 | Week 2 | 110円→150円 | RSI, MACD, BB実践 | 📝 予定 |
 | Week 3 | 150円→300円 | 感情分析、統合判断 | 📝 予定 |
 | Week 4 | 300円→1000円 | システム化、振り返り | 📝 予定 |
@@ -252,7 +252,7 @@ grass-coin-trader/
 │
 ├── curriculum/                      # 📚 学習者向け教材
 │   ├── README.md                    # 教材全体ガイド
-│   ├── week1_basics_v2.md           # Week 1: 100円チャレンジ開始
+│   ├── week1_basics.md              # Week 1: 100円チャレンジ開始
 │   │
 │   └── stories/                     # 📖 Chapter形式（技術ストーリー）
 │       ├── README.md                # Chapter形式ガイド

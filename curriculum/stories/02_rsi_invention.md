@@ -531,7 +531,7 @@ RSIを実際の取引で活用する方法：
   - ダイバージェンス検出
 
 現状の参考：
-- **[Week 1](../week1_basics_v2.md#関連する技術ストーリーchapter形式)** - Week 1でRSIの重要性を体験
+- **[Week 1](../week1_basics.md#関連する技術ストーリーchapter形式)** - Week 1でRSIの重要性を体験
 
 ---
 
