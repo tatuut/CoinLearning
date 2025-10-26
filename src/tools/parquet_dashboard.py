@@ -18,6 +18,7 @@ from datetime import datetime
 from src.data.timeseries_storage import TimeSeriesStorage
 from src.config.exchange_api import MEXCAPI
 from src.data.advanced_database import AdvancedDatabase
+from src.analysis.forecasting import ForecastingEngine
 
 
 # ページ設定
@@ -463,6 +464,151 @@ def show_statistics(df, symbol):
             st.info("ℹ️ 中立")
 
 
+def show_forecast(df, symbol):
+    """ARIMA/GARCH予測を表示"""
+    st.subheader("🔮 価格予測（ARIMA/GARCH）")
+
+    with st.expander("💡 予測機能について"):
+        st.markdown("""
+### ARIMA/GARCH予測とは？
+
+**ARIMA（自己回帰和分移動平均モデル）**:
+- 過去の価格データから将来の価格を予測
+- 1970年にBox & Jenkinsが開発
+- 時系列データの予測に広く使われている
+
+**GARCH（一般化自己回帰条件付き分散不均一モデル）**:
+- ボラティリティ（価格変動の激しさ）を予測
+- 1982年にRobert Engleが開発（ノーベル経済学賞受賞）
+- リスク管理に重要
+
+**注意**: これは過去データに基づく統計モデルです。実際の価格は様々な要因で変動します。
+        """)
+
+    if len(df) < 100:
+        st.warning("⚠️ 予測には最低100日分のデータが必要です（現在: {len(df)}日分）")
+        return
+
+    # 予測実行ボタン
+    if st.button("🔮 7日間の価格とリスクを予測", key="run_forecast"):
+        with st.spinner("予測計算中...（20-30秒かかります）"):
+            engine = ForecastingEngine()
+
+            # 全データを読み込み（予測精度向上のため）
+            storage = get_storage()
+            full_df = storage.load_price_data(symbol, '1d')
+
+            if len(full_df) >= 100:
+                result = engine.combined_forecast(full_df, periods=7)
+
+                # 予測説明
+                st.markdown(engine.explain_forecast(result))
+
+                # 予測チャート
+                if result['price_forecast']['success']:
+                    st.markdown("---")
+                    st.markdown("### 📈 価格予測チャート")
+
+                    # 予測値のプロット
+                    fig = go.Figure()
+
+                    # 過去30日の実績
+                    historical_data = full_df.tail(30)
+                    fig.add_trace(go.Scatter(
+                        x=historical_data.index,
+                        y=historical_data['close'],
+                        mode='lines',
+                        name='実績価格',
+                        line=dict(color='blue', width=2)
+                    ))
+
+                    # 予測値
+                    forecast_dates = pd.date_range(
+                        start=historical_data.index[-1] + pd.Timedelta(days=1),
+                        periods=7,
+                        freq='D'
+                    )
+                    forecasts = result['price_forecast']['forecast']
+
+                    fig.add_trace(go.Scatter(
+                        x=forecast_dates,
+                        y=forecasts,
+                        mode='lines+markers',
+                        name='予測価格',
+                        line=dict(color='red', width=2, dash='dash')
+                    ))
+
+                    # 信頼区間
+                    if 'conf_int_lower' in result['price_forecast']:
+                        fig.add_trace(go.Scatter(
+                            x=forecast_dates,
+                            y=result['price_forecast']['conf_int_upper'],
+                            mode='lines',
+                            line=dict(width=0),
+                            showlegend=False,
+                            hoverinfo='skip'
+                        ))
+                        fig.add_trace(go.Scatter(
+                            x=forecast_dates,
+                            y=result['price_forecast']['conf_int_lower'],
+                            mode='lines',
+                            line=dict(width=0),
+                            fillcolor='rgba(255, 0, 0, 0.2)',
+                            fill='tonexty',
+                            name='95%信頼区間',
+                            hoverinfo='skip'
+                        ))
+
+                    fig.update_layout(
+                        title=f'{symbol} 価格予測（7日間）',
+                        xaxis_title='日付',
+                        yaxis_title='価格 ($)',
+                        height=400,
+                        hovermode='x unified'
+                    )
+
+                    st.plotly_chart(fig, width='stretch')
+
+                    # 予測値テーブル
+                    st.markdown("### 📋 予測値詳細")
+                    forecast_df = pd.DataFrame({
+                        '日付': forecast_dates.strftime('%Y-%m-%d'),
+                        '予測価格': [f"${p:,.2f}" for p in forecasts],
+                    })
+                    if 'conf_int_lower' in result['price_forecast']:
+                        forecast_df['下限（95%）'] = [f"${p:,.2f}" for p in result['price_forecast']['conf_int_lower']]
+                        forecast_df['上限（95%）'] = [f"${p:,.2f}" for p in result['price_forecast']['conf_int_upper']]
+
+                    st.dataframe(forecast_df, width='stretch')
+
+                # ボラティリティ予測
+                if result['volatility_forecast']['success']:
+                    st.markdown("---")
+                    st.markdown("### 📊 ボラティリティ予測")
+
+                    vol_data = result['volatility_forecast']
+
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.metric(
+                            "現在のボラティリティ",
+                            f"{vol_data['current_volatility']:.2f}%/日",
+                            help="過去データから計算した現在の価格変動率"
+                        )
+                    with col2:
+                        st.metric(
+                            "予測平均ボラティリティ（7日間）",
+                            f"{vol_data['mean_volatility']:.2f}%/日",
+                            help="今後7日間の予測される平均的な価格変動率"
+                        )
+
+            else:
+                st.error("❌ データ不足：予測には最低100日分のデータが必要です")
+
+    else:
+        st.info("👆 ボタンをクリックして予測を実行してください")
+
+
 def show_news(symbol):
     """ニュース一覧表示"""
     col1, col2 = st.columns([3, 1])
@@ -471,7 +617,7 @@ def show_news(symbol):
         st.subheader("📰 保存されたニュース")
 
     with col2:
-        if st.button("🔄 ニュース取得・保存", key="fetch_news"):
+        if st.button("🔄 DBから読込", key="fetch_news"):
             with st.spinner("ニュースを取得中..."):
                 success, message = fetch_and_save_news(symbol)
                 if success:
@@ -479,6 +625,43 @@ def show_news(symbol):
                     st.rerun()
                 else:
                     st.error(message)
+
+    # ニュース検索のヘルプ
+    with st.expander("💡 新しいニュースを取得する方法"):
+        coin_name = {
+            'BTC': 'Bitcoin', 'ETH': 'Ethereum', 'XRP': 'Ripple',
+            'DOGE': 'Dogecoin', 'SHIB': 'Shiba Inu'
+        }.get(symbol, symbol)
+
+        st.markdown(f"""
+### 方法1: Claude Codeで検索
+
+Claude Codeセッションで以下を実行：
+
+```python
+# ニュース検索クエリを生成
+python src/tools/news_fetcher.py {symbol}
+```
+
+Claude CodeがWebSearchを実行し、自動的にニュースをDBに保存します。
+
+### 方法2: 手動で追加
+
+```bash
+python src/tools/news_fetcher.py {symbol} --add-manual \\
+  --title "ニュースタイトル" \\
+  --content "ニュース本文" \\
+  --url "https://example.com/news"
+```
+
+### 検索クエリ例
+
+`{coin_name} {symbol} 仮想通貨 最新ニュース 2025`
+        """)
+
+        # 検索クエリをコピー用に表示
+        query = f"{coin_name} {symbol} 仮想通貨 最新ニュース 2025"
+        st.code(query, language="text")
 
     news_dir = Path(f'data/news/{symbol}')
 
@@ -612,6 +795,11 @@ def main():
 
     # ニュース表示
     show_news(selected_symbol)
+
+    st.markdown("---")
+
+    # 価格予測（ARIMA/GARCH）
+    show_forecast(df, selected_symbol)
 
     st.markdown("---")
     st.caption("Powered by Streamlit | Data: Parquet Files")
