@@ -216,7 +216,7 @@ Claude Codeが裏で何をやってるか分からない：
 
 **ユウタ**: 「どうやるの？」
 
-**ミコ**: 「調べたぞ」
+**ミコ**: 「まずはバックグラウンド実行の技術を調べた」
 
 ---
 
@@ -244,156 +244,556 @@ Claude Codeが裏で何をやってるか分からない：
 # デメリット: 高度な機能は少ない
 ```
 
-**ミコ**: 「これだ！」
+**ミコ**: 「これだ！シンプルで十分」
+
+**ユウタ**: 「Redis Queue...？」
+
+**ミコ**: 「まず基本から説明する」
 
 ---
 
-### アーキテクチャ設計
+### ステップ1: FastAPIとは何か
 
-**ミコ**: 「こういう構成にする」
+**ミコ**: 「今のtest_claude_sdk.pyは、ローカルでしか動かない」
+
+**ユウタ**: 「うん」
+
+**ミコ**: 「Streamlitダッシュボードから呼びたいよな？」
+
+**ユウタ**: 「そりゃそうだ」
+
+**ミコ**: 「だから**REST API**が必要なんだ」
 
 ```
-【Phase 2: バックグラウンド実行基盤】
+【REST APIとは】
 
-┌─────────────────┐
-│  Streamlit UI   │  ← ユーザーがボタンクリック
-│  (Port 8501)    │
-└────────┬────────┘
-         │ HTTP POST /api/jobs/start
-         │ {"symbol": "BTC"}
-         ↓
-┌─────────────────┐
-│  FastAPI        │  ← ジョブをキューに追加
-│  (Port 8000)    │      job_id を返す
-│  /api/jobs      │
-└────────┬────────┘
-         │ Enqueue
-         ↓
-┌─────────────────┐
-│  Redis Queue    │  ← ジョブキュー
-│  (RQ)           │
-└────────┬────────┘
-         │ Dequeue
-         ↓
-┌─────────────────┐
-│  Worker Process │  ← バックグラウンドで実行
-│  (rq worker)    │      ダミージョブ（Phase 2）
-└─────────────────┘      Claude Code（Phase 3）
+HTTP経由で他のプログラムから呼び出せる関数みたいなもの。
+
+例:
+  curl http://localhost:8000/api/jobs/start
+  → 関数が実行される
+  → 結果がJSONで返ってくる
 ```
 
-**ユウタ**: 「なるほど、ボタンを押したら即座にjob_idが返ってきて、裏で実行されるのか」
+**ユウタ**: 「なるほど、HTTP経由で呼べるようにするのか」
 
-**ミコ**: 「そう。ダッシュボードはフリーズしない」
-
----
-
-### Phase 2実装
-
-**ミコ**: 「まずはPhase 2。インフラだけ作る。実装はダミーでいい」
-
-**Phase 2の目標**:
-1. FastAPI + Redis + RQ でバックグラウンドジョブ実行
-2. ダミージョブで動作確認
-3. Claude Code統合は Phase 3で
+**ミコ**: 「そう。FastAPIはPythonでREST APIを作るフレームワークだ」
 
 ---
+
+### ステップ2: 最小限のFastAPI起動
+
+**ミコ**: 「まず最小限のAPIを作ってみる」
 
 **依存関係インストール**:
 ```bash
-pip install fastapi uvicorn redis rq python-dotenv
+pip install fastapi uvicorn
 ```
 
-**Redisセットアップ**:
+**最小限のAPI（`backend/main.py`）**:
+```python
+from fastapi import FastAPI
+import uvicorn
+
+app = FastAPI()
+
+@app.get("/")
+async def root():
+    return {"message": "Hello World"}
+
+if __name__ == "__main__":
+    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+```
+
+**ミコ**: 「これだけ」
+
+**ユウタ**: 「シンプルだな」
+
+**起動**:
+```bash
+mkdir backend
+python backend/main.py
+```
+
+**出力**:
+```
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+```
+
+**別のターミナルでテスト**:
+```bash
+curl http://localhost:8000/
+```
+
+**結果**:
+```json
+{"message": "Hello World"}
+```
+
+**ユウタ**: 「おお、動いた！」
+
+**ミコ**: 「これがFastAPIの基本だ」
+
+---
+
+### ステップ3: Redisとは何か
+
+**ミコ**: 「次はRedis」
+
+**ユウタ**: 「Redis...？」
+
+**ミコ**: 「**超高速なメモリ上のデータベース**だ」
+
+```
+【Redisの役割】
+
+通常のDB（SQLite、PostgreSQL等）:
+  → ディスクに保存、永続化、遅い
+
+Redis:
+  → メモリに保存、超高速、揮発性（再起動で消える）
+  → でも設定で永続化も可能
+
+用途:
+  - キャッシュ
+  - セッション管理
+  - **ジョブキュー** ← 今回はこれ
+```
+
+**ユウタ**: 「ジョブキュー...？」
+
+**ミコ**: 「こういうことだ」
+
+```
+【ジョブキューの動き】
+
+1. FastAPIがジョブをRedisに登録（Enqueue）
+   Redis: ["ジョブ1", "ジョブ2", "ジョブ3"]
+
+2. 別プロセス（Worker）がジョブを取り出す（Dequeue）
+   Worker: 「ジョブ1を実行しま〜す」
+
+3. 実行完了
+   Worker: 「ジョブ1完了！次はジョブ2」
+```
+
+**ユウタ**: 「なるほど！Redisが仲介役になるのか」
+
+**ミコ**: 「その通り」
+
+---
+
+### ステップ4: Redisセットアップ
+
+**Redisインストール（WSL）**:
 ```bash
 wsl
+sudo apt update
+sudo apt install redis-server
+```
+
+**Redis起動**:
+```bash
 sudo service redis-server start
 ```
 
-**.env**:
+**動作確認**:
 ```bash
-REDIS_HOST=localhost
-REDIS_PORT=6379
-FASTAPI_HOST=0.0.0.0
-FASTAPI_PORT=8000
+redis-cli ping
 ```
+
+**結果**:
+```
+PONG
+```
+
+**ユウタ**: 「PONG...？」
+
+**ミコ**: 「Redisが動いてる証拠だ」
 
 ---
 
-**`backend/config.py`**:
-```python
-import os
-from dotenv import load_dotenv
+### ステップ5: RQとは何か
 
-load_dotenv()
+**ミコ**: 「次はRQ（Redis Queue）」
 
-class Settings:
-    REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-    REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
-    FASTAPI_HOST = os.getenv("FASTAPI_HOST", "0.0.0.0")
-    FASTAPI_PORT = int(os.getenv("FASTAPI_PORT", 8000))
+**ユウタ**: 「Redisを使ったキューライブラリってこと？」
 
-settings = Settings()
+**ミコ**: 「そう。Redisだけだとキュー機能が素朴すぎる。RQはジョブ管理を簡単にする」
+
 ```
+【RQの機能】
+
+1. ジョブの登録（Enqueue）
+   queue.enqueue(dummy_job, args=("BTC",))
+
+2. ジョブステータス管理
+   - queued（待機中）
+   - started（実行中）
+   - finished（完了）
+   - failed（失敗）
+
+3. ジョブの結果保存
+   job.result → {"success": True, "symbol": "BTC"}
+
+4. タイムアウト設定
+   job_timeout='10m' → 10分で自動終了
+```
+
+**ユウタ**: 「便利じゃん！」
+
+**ミコ**: 「だからRQを使う」
 
 ---
 
-**`backend/workers/dummy_worker.py`** - ダミーワーカー:
+### ステップ6: 最小限のジョブを作る
+
+**ミコ**: 「まず最小限のジョブを作ってみる」
+
+**RQインストール**:
+```bash
+pip install redis rq
+```
+
+**最小限のワーカー（`backend/workers/simple_worker.py`）**:
 ```python
-"""Phase 2: ダミーワーカー（Phase 3でClaude Code実行に置き換え）"""
 import time
 
-def dummy_job(symbol: str, job_id: str = None):
-    """ダミージョブ（3ステップ、計5秒）"""
-
-    def log(msg):
-        print(f"[DUMMY] {msg}")
-        # Phase 4でWebSocketログ追加
-
-    log(f"🚀 Job started for {symbol}")
-
-    log("⏳ Step 1/3: Simulating WebSearch...")
-    time.sleep(2)
-    log("✅ Step 1 done")
-
-    log("⏳ Step 2/3: Simulating analysis...")
-    time.sleep(2)
-    log("✅ Step 2 done")
-
-    log("⏳ Step 3/3: Simulating DB save...")
-    time.sleep(1)
-    log("✅ Step 3 done")
-
-    log("🎉 Completed!")
-
-    return {"success": True, "symbol": symbol}
+def simple_job(name):
+    """超シンプルなジョブ"""
+    print(f"Hello, {name}!")
+    time.sleep(2)  # 2秒待つ
+    print(f"Goodbye, {name}!")
+    return {"message": f"Job for {name} completed"}
 ```
+
+**ミコ**: 「これだけ。2秒待って終わる」
+
+**ユウタ**: 「シンプルだな」
 
 ---
 
-**`backend/api/jobs.py`** - ジョブAPI:
+### ステップ7: ジョブをテスト実行
+
+**テストスクリプト（`test_rq.py`）**:
+```python
+from redis import Redis
+from rq import Queue
+from backend.workers.simple_worker import simple_job
+
+# Redisに接続
+redis_conn = Redis(host='localhost', port=6379)
+
+# キュー作成
+queue = Queue(connection=redis_conn)
+
+# ジョブを登録
+job = queue.enqueue(simple_job, args=("ユウタ",))
+
+print(f"ジョブ登録完了！ Job ID: {job.id}")
+print(f"ステータス: {job.get_status()}")
+```
+
+**ターミナル1: ワーカー起動**:
+```bash
+mkdir backend/workers
+rq worker --url redis://localhost:6379
+```
+
+**出力**:
+```
+INFO:     Worker started, version 1.15.1
+INFO:     Subscribing to default...
+```
+
+**ターミナル2: ジョブ登録**:
+```bash
+python test_rq.py
+```
+
+**出力**:
+```
+ジョブ登録完了！ Job ID: 1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p
+ステータス: queued
+```
+
+**ターミナル1（ワーカー側）の出力**:
+```
+Hello, ユウタ!
+（2秒待機）
+Goodbye, ユウタ!
+default: backend.workers.simple_worker.simple_job('ユウタ') (1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p)
+```
+
+**ユウタ**: 「おお！別プロセスで実行された！」
+
+**ミコ**: 「そう。これがバックグラウンド実行だ」
+
+---
+
+### ステップ8: 仕組みの理解
+
+**ミコ**: 「今の流れを整理するぞ」
+
+```
+【バックグラウンド実行の流れ】
+
+1. test_rq.py が queue.enqueue() を実行
+   → Redisにジョブ情報を登録
+   → 即座に完了（ブロックしない）
+
+2. 別プロセス（rq worker）が常に監視
+   → Redisに新しいジョブがあるか確認
+   → あったら取り出して実行
+
+3. 実行完了
+   → 結果をRedisに保存
+   → 次のジョブを待つ
+```
+
+**ユウタ**: 「なるほど！だからメインプログラムはフリーズしないんだ」
+
+**ミコ**: 「その通り」
+
+---
+
+### ステップ9: FastAPIと統合
+
+**ミコ**: 「次はFastAPIから呼べるようにする」
+
+**ユウタ**: 「さっきのtest_rq.pyの中身をAPIにするってこと？」
+
+**ミコ**: 「正解」
+
+**FastAPIにジョブAPIを追加（`backend/api/jobs.py`）**:
 ```python
 from fastapi import APIRouter
 from pydantic import BaseModel
 from redis import Redis
 from rq import Queue
-from backend.config import settings
-from backend.workers.dummy_worker import dummy_job
+from backend.workers.simple_worker import simple_job
 
 router = APIRouter()
 
-redis_conn = Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
+# Redisに接続
+redis_conn = Redis(host='localhost', port=6379)
 queue = Queue(connection=redis_conn)
 
 class JobRequest(BaseModel):
-    symbol: str
+    name: str
+
+@router.post("/start")
+async def start_job(request: JobRequest):
+    """ジョブ開始"""
+    job = queue.enqueue(simple_job, args=(request.name,))
+
+    return {
+        "job_id": job.id,
+        "name": request.name,
+        "status": job.get_status(),
+        "message": "Job started"
+    }
+
+@router.get("/status/{job_id}")
+async def get_status(job_id: str):
+    """ジョブステータス確認"""
+    from rq.job import Job
+    job = Job.fetch(job_id, connection=redis_conn)
+
+    return {
+        "job_id": job.id,
+        "status": job.get_status(),
+        "result": job.result if job.is_finished else None
+    }
+```
+
+**ミコ**: 「2つのエンドポイントを作った」
+
+```
+1. POST /api/jobs/start
+   → ジョブを登録して job_id を返す
+
+2. GET /api/jobs/status/{job_id}
+   → ジョブのステータスと結果を返す
+```
+
+**ユウタ**: 「なるほど！」
+
+---
+
+### ステップ10: FastAPIルーター登録
+
+**`backend/main.py`を更新**:
+```python
+from fastapi import FastAPI
+from backend.api.jobs import router as jobs_router
+import uvicorn
+
+app = FastAPI(title="Grass Coin Trader API")
+
+# ジョブAPIを登録
+app.include_router(jobs_router, prefix="/api/jobs", tags=["jobs"])
+
+@app.get("/")
+async def root():
+    return {"message": "Grass Coin Trader API", "version": "1.0.0"}
+
+if __name__ == "__main__":
+    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+```
+
+**ミコ**: 「`include_router()`でジョブAPIを追加した」
+
+**ユウタ**: 「prefix="/api/jobs"ってことは、/api/jobs/startでアクセスできるのか」
+
+**ミコ**: 「そう」
+
+---
+
+### ステップ11: テスト実行
+
+**ターミナル1: FastAPI起動**:
+```bash
+python backend/main.py
+```
+
+**ターミナル2: RQワーカー起動**:
+```bash
+mkdir backend/api
+rq worker --url redis://localhost:6379
+```
+
+**ターミナル3: ジョブ開始**:
+```bash
+curl -X POST http://localhost:8000/api/jobs/start \
+  -H "Content-Type: application/json" \
+  -d '{"name": "ユウタ"}'
+```
+
+**結果**:
+```json
+{
+  "job_id": "abc-123-def",
+  "name": "ユウタ",
+  "status": "queued",
+  "message": "Job started"
+}
+```
+
+**ターミナル2（ワーカー）の出力**:
+```
+Hello, ユウタ!
+（2秒待機）
+Goodbye, ユウタ!
+```
+
+**ターミナル3: ステータス確認**:
+```bash
+curl http://localhost:8000/api/jobs/status/abc-123-def
+```
+
+**結果**:
+```json
+{
+  "job_id": "abc-123-def",
+  "status": "finished",
+  "result": {"message": "Job for ユウタ completed"}
+}
+```
+
+**ユウタ**: 「おお！API経由でバックグラウンドジョブが実行できた！」
+
+**ミコ**: 「これが基本だ」
+
+---
+
+### ステップ12: ダミージョブに置き換え
+
+**ミコ**: 「次は、Claude Code実行をシミュレートするダミージョブに置き換える」
+
+**ユウタ**: 「Claude Codeっぽい動きをする偽物ってこと？」
+
+**ミコ**: 「そう。Phase 3でClaude Codeに置き換える前に、まず動作確認」
+
+**ダミーワーカー（`backend/workers/dummy_worker.py`）**:
+```python
+"""Phase 2: ダミーワーカー（Claude Code実行をシミュレート）"""
+import time
+
+def dummy_job(symbol: str):
+    """Claude Code実行をシミュレート（3ステップ、計5秒）"""
+
+    print(f"🚀 Job started for {symbol}")
+
+    # Step 1: WebSearch シミュレート
+    print("⏳ Step 1/3: Simulating WebSearch...")
+    time.sleep(2)
+    print("✅ Step 1 done: Found 5 articles")
+
+    # Step 2: Analysis シミュレート
+    print("⏳ Step 2/3: Simulating analysis...")
+    time.sleep(2)
+    print("✅ Step 2 done: Average sentiment +0.45")
+
+    # Step 3: DB Save シミュレート
+    print("⏳ Step 3/3: Simulating DB save...")
+    time.sleep(1)
+    print("✅ Step 3 done: Saved to database")
+
+    print("🎉 Completed!")
+
+    return {
+        "success": True,
+        "symbol": symbol,
+        "news_count": 5,
+        "avg_sentiment": 0.45
+    }
+```
+
+**ミコ**: 「Claude Codeの動きをシミュレートした」
+
+```
+【シミュレートしている動作】
+
+Step 1: WebSearchツールでニュース検索（2秒）
+  → "Found 5 articles"
+
+Step 2: 記事を分析（2秒）
+  → "Average sentiment +0.45"
+
+Step 3: DBに保存（1秒）
+  → "Saved to database"
+```
+
+**ユウタ**: 「なるほど、Phase 3で本物に置き換えるわけか」
+
+---
+
+### ステップ13: APIを更新
+
+**`backend/api/jobs.py`を更新**:
+```python
+from fastapi import APIRouter
+from pydantic import BaseModel
+from redis import Redis
+from rq import Queue
+from backend.workers.dummy_worker import dummy_job  # ← 変更
+
+router = APIRouter()
+
+redis_conn = Redis(host='localhost', port=6379)
+queue = Queue(connection=redis_conn)
+
+class JobRequest(BaseModel):
+    symbol: str  # ← nameからsymbolに変更
 
 @router.post("/start")
 async def start_job(request: JobRequest):
     """ジョブ開始"""
     job = queue.enqueue(
-        dummy_job,
+        dummy_job,  # ← 変更
         args=(request.symbol,),
-        job_timeout='10m'
+        job_timeout='10m'  # ← タイムアウト追加
     )
 
     return {
@@ -415,43 +815,126 @@ async def get_status(job_id: str):
     }
 ```
 
+**ミコ**: 「変更点は3つ」
+
+```
+1. simple_job → dummy_job
+2. name → symbol（仮想通貨用に変更）
+3. job_timeout='10m' 追加（長時間ジョブ対策）
+```
+
 ---
 
-**`backend/main.py`** - FastAPIサーバー:
+### ステップ14: 環境変数管理
+
+**ミコ**: 「最後に、設定をハードコードから環境変数に移す」
+
+**ユウタ**: 「なんで？」
+
+**ミコ**: 「本番環境とテスト環境でRedisのホストが違うかもしれない」
+
+**環境変数ファイル（`.env`）**:
+```bash
+REDIS_HOST=localhost
+REDIS_PORT=6379
+FASTAPI_HOST=0.0.0.0
+FASTAPI_PORT=8000
+```
+
+**依存関係追加**:
+```bash
+pip install python-dotenv
+```
+
+**設定ファイル（`backend/config.py`）**:
 ```python
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from backend.config import settings
-from backend.api.jobs import router as jobs_router
-import uvicorn
+import os
+from dotenv import load_dotenv
 
-app = FastAPI(title="Grass Coin Trader API")
+load_dotenv()  # .envファイルを読み込む
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+class Settings:
+    REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+    REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
+    FASTAPI_HOST = os.getenv("FASTAPI_HOST", "0.0.0.0")
+    FASTAPI_PORT = int(os.getenv("FASTAPI_PORT", 8000))
 
-app.include_router(jobs_router, prefix="/api/jobs", tags=["jobs"])
+settings = Settings()
+```
 
-@app.get("/")
-async def root():
-    return {"message": "Grass Coin Trader API", "version": "1.0.0"}
+**`backend/api/jobs.py`を更新**:
+```python
+from backend.config import settings  # ← 追加
+
+redis_conn = Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT)  # ← 変更
+```
+
+**`backend/main.py`を更新**:
+```python
+from backend.config import settings  # ← 追加
 
 if __name__ == "__main__":
     uvicorn.run("backend.main:app", host=settings.FASTAPI_HOST, port=settings.FASTAPI_PORT, reload=True)
 ```
 
+**ミコ**: 「これで設定を一箇所で管理できる」
+
 ---
 
-### Phase 2テスト
+### ステップ15: CORS設定
+
+**ミコ**: 「最後にCORS設定」
+
+**ユウタ**: 「CORS...？」
+
+**ミコ**: 「Cross-Origin Resource Sharingの略。ブラウザのセキュリティ制約だ」
+
+```
+【CORSとは】
+
+問題:
+  Streamlit（http://localhost:8501）から
+  FastAPI（http://localhost:8000）を呼ぶと
+  → ブラウザが「異なるドメインだからダメ！」とブロック
+
+解決:
+  FastAPIに「Streamlitからのアクセスを許可する」と設定
+```
+
+**`backend/main.py`に追加**:
+```python
+from fastapi.middleware.cors import CORSMiddleware  # ← 追加
+
+app = FastAPI(title="Grass Coin Trader API")
+
+# CORS設定
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 全てのドメインを許可（開発用）
+    allow_credentials=True,
+    allow_methods=["*"],  # 全てのHTTPメソッドを許可
+    allow_headers=["*"],  # 全てのヘッダーを許可
+)
+
+app.include_router(jobs_router, prefix="/api/jobs", tags=["jobs"])
+```
+
+**ミコ**: 「これでStreamlitから呼べる」
+
+---
+
+### Phase 2 完成テスト
+
+**ユウタ**: 「じゃあ最終テストだ！」
 
 **ターミナル1: FastAPI起動**:
 ```bash
 python backend/main.py
+```
+
+**出力**:
+```
+INFO:     Uvicorn running on http://0.0.0.0:8000
 ```
 
 **ターミナル2: RQワーカー起動**:
@@ -459,7 +942,13 @@ python backend/main.py
 rq worker --url redis://localhost:6379
 ```
 
-**ターミナル3: テスト実行**:
+**出力**:
+```
+INFO:     Worker started
+INFO:     Subscribing to default...
+```
+
+**ターミナル3: ジョブ開始**:
 ```bash
 curl -X POST http://localhost:8000/api/jobs/start \
   -H "Content-Type: application/json" \
@@ -475,21 +964,77 @@ curl -X POST http://localhost:8000/api/jobs/start \
 }
 ```
 
-**ターミナル2（RQワーカー）の出力**:
+**ターミナル2（ワーカー）の出力**:
 ```
-[DUMMY] 🚀 Job started for BTC
-[DUMMY] ⏳ Step 1/3: Simulating WebSearch...
-[DUMMY] ✅ Step 1 done
-[DUMMY] ⏳ Step 2/3: Simulating analysis...
-[DUMMY] ✅ Step 2 done
-[DUMMY] ⏳ Step 3/3: Simulating DB save...
-[DUMMY] ✅ Step 3 done
-[DUMMY] 🎉 Completed!
+🚀 Job started for BTC
+⏳ Step 1/3: Simulating WebSearch...
+✅ Step 1 done: Found 5 articles
+⏳ Step 2/3: Simulating analysis...
+✅ Step 2 done: Average sentiment +0.45
+⏳ Step 3/3: Simulating DB save...
+✅ Step 3 done: Saved to database
+🎉 Completed!
 ```
 
-**ユウタ**: 「動いた！しかも非同期だ！」
+**ターミナル3: ステータス確認**:
+```bash
+curl http://localhost:8000/api/jobs/status/abc-123-def
+```
 
-**ミコ**: 「Phase 2完成。次はログの可視化だ」
+**結果**:
+```json
+{
+  "job_id": "abc-123-def",
+  "status": "finished",
+  "result": {
+    "success": true,
+    "symbol": "BTC",
+    "news_count": 5,
+    "avg_sentiment": 0.45
+  }
+}
+```
+
+**ユウタ**: 「完璧！バックグラウンドで実行されて、結果も取得できた！」
+
+**ミコ**: 「Phase 2完成だ」
+
+---
+
+### まとめ: Phase 2で作ったもの
+
+**ミコ**: 「Phase 2で何を作ったか整理するぞ」
+
+```
+【Phase 2実装内容】
+
+1. FastAPI - REST APIサーバー
+   - HTTP経由でジョブを実行できる
+   - /api/jobs/start → ジョブ開始
+   - /api/jobs/status/{job_id} → ステータス確認
+
+2. Redis - 高速データストア
+   - ジョブキューとして使用
+   - Workerとの仲介役
+
+3. RQ (Redis Queue) - ジョブ管理
+   - ジョブの登録・実行・ステータス管理
+   - タイムアウト管理
+
+4. Worker - バックグラウンド実行
+   - 別プロセスでジョブを実行
+   - メインプロセス（FastAPI）はフリーズしない
+
+5. ダミージョブ - Claude Code実行をシミュレート
+   - Step 1: WebSearch
+   - Step 2: Analysis
+   - Step 3: DB Save
+   - Phase 3で本物のClaude Codeに置き換え
+```
+
+**ユウタ**: 「分かった！段階的に作ったから理解しやすかった」
+
+**ミコ**: 「次はWebSocketでログを可視化する」
 
 ---
 
