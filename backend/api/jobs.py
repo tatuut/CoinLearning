@@ -1,46 +1,30 @@
-"""Job management API"""
-from fastapi import APIRouter
+"""Job management API (Redis不要版 - BackgroundTasks使用)"""
+from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel
-from redis import Redis
-from rq import Queue
-from backend.config import settings
+import uuid
+from backend.api.job_manager import job_manager
 from backend.workers.dummy_worker import dummy_job
 
 router = APIRouter()
-
-# Redis接続
-redis_conn = Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
-queue = Queue(connection=redis_conn)
 
 class JobRequest(BaseModel):
     symbol: str
 
 @router.post("/start")
-async def start_job(request: JobRequest):
-    """ジョブ開始"""
+async def start_job(request: JobRequest, background_tasks: BackgroundTasks):
+    """ジョブ開始（BackgroundTasks使用）"""
 
-    # Step 1: まずjob_idなしでエンキュー（job_idを取得するため）
-    temp_job = queue.enqueue(
-        dummy_job,
-        args=(request.symbol,),
-        kwargs={"job_id": None},
-        job_timeout='10m'
-    )
+    # ジョブID生成
+    job_id = str(uuid.uuid4())
 
-    # Step 2: 一旦キャンセル
-    temp_job.cancel()
+    # ジョブ作成（SQLite）
+    job_manager.create_job(job_id, request.symbol)
 
-    # Step 3: 正しいjob_idを渡して再エンキュー
-    job = queue.enqueue(
-        dummy_job,
-        args=(request.symbol,),
-        kwargs={"job_id": temp_job.id},
-        job_id=temp_job.id,  # ← 同じIDを使う
-        job_timeout='10m'
-    )
+    # バックグラウンドタスク追加
+    background_tasks.add_task(dummy_job, request.symbol, job_id)
 
     return {
-        "job_id": job.id,
+        "job_id": job_id,
         "symbol": request.symbol,
         "message": "Job started"
     }
@@ -48,44 +32,47 @@ async def start_job(request: JobRequest):
 @router.get("/status/{job_id}")
 async def get_status(job_id: str):
     """ジョブステータス確認"""
-    from rq.job import Job
-    try:
-        job = Job.fetch(job_id, connection=redis_conn)
-        return {
-            "job_id": job.id,
-            "status": job.get_status(),
-            "result": job.result if job.is_finished else None
-        }
-    except:
+    job = job_manager.get_job(job_id)
+
+    if not job:
         return {
             "job_id": job_id,
             "status": "not_found",
             "result": None
         }
 
+    return {
+        "job_id": job["job_id"],
+        "status": job["status"],
+        "result": job["result"]
+    }
+
 @router.get("/logs/{job_id}")
 async def get_logs(job_id: str, offset: int = 0):
     """ジョブのログを取得（増分）"""
 
-    # Redisからログを取得（offset以降）
-    logs = redis_conn.lrange(f"logs:{job_id}", offset, -1)
-    logs = [log.decode('utf-8') for log in logs]
+    # ジョブ情報取得
+    job = job_manager.get_job(job_id)
 
-    # ジョブステータスも一緒に返す
-    from rq.job import Job
-    try:
-        job = Job.fetch(job_id, connection=redis_conn)
-        status = job.get_status()
-        result = job.result if job.is_finished else None
-    except:
-        status = "not_found"
-        result = None
+    if not job:
+        return {
+            "job_id": job_id,
+            "status": "not_found",
+            "logs": [],
+            "total_logs": 0,
+            "has_more": False,
+            "result": None
+        }
+
+    # ログ取得（offset以降）
+    logs = job_manager.get_logs(job_id, offset)
+    total_count = job_manager.get_log_count(job_id)
 
     return {
         "job_id": job_id,
-        "status": status,
+        "status": job["status"],
         "logs": logs,
-        "total_logs": offset + len(logs),
-        "has_more": status not in ["finished", "failed", "not_found"],
-        "result": result
+        "total_logs": total_count,
+        "has_more": job["status"] not in ["finished", "failed"],
+        "result": job["result"]
     }
