@@ -15,6 +15,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from pathlib import Path
 from datetime import datetime
+import requests
+import time
 from src.data.timeseries_storage import TimeSeriesStorage
 from src.config.exchange_api import MEXCAPI
 from src.data.advanced_database import AdvancedDatabase
@@ -609,6 +611,120 @@ def show_forecast(df, symbol):
         st.info("👆 ボタンをクリックして予測を実行してください")
 
 
+def show_job_with_realtime_logs():
+    """リアルタイムログ付きジョブ実行"""
+
+    st.subheader("🤖 バックグラウンドジョブ実行（リアルタイムログ）")
+
+    with st.expander("💡 この機能について"):
+        st.markdown("""
+### バックグラウンドジョブとは？
+
+Phase 2で実装したバックグラウンド実行基盤のデモです。
+
+**仕組み**:
+1. ボタンクリック → FastAPIにジョブ開始リクエスト
+2. RQ Workerがバックグラウンドで実行（5秒、3ステップ）
+3. 0.5秒ごとにログをポーリング
+4. リアルタイムでログ表示
+
+**Phase 3では**:
+- ダミージョブ → Claude Code SDK実行に置き換え
+- ニュース検索＆分析を自動化
+        """)
+
+    # シンボル選択
+    symbol = st.selectbox("仮想通貨を選択", ["BTC", "ETH", "XRP"], key="job_symbol")
+
+    # ジョブ開始ボタン
+    if st.button("🚀 ダミージョブ開始", key="start_job"):
+        # ジョブ開始API呼び出し
+        try:
+            response = requests.post(
+                "http://localhost:8000/api/jobs/start",
+                json={"symbol": symbol},
+                timeout=10
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                st.session_state["job_id"] = data["job_id"]
+                st.session_state["log_offset"] = 0
+                st.session_state["job_running"] = True
+                st.session_state["all_logs"] = []
+                st.success(f"✅ ジョブ開始！ Job ID: {data['job_id']}")
+                st.rerun()
+            else:
+                st.error(f"❌ エラー: {response.status_code}")
+        except requests.exceptions.ConnectionError:
+            st.error("❌ FastAPIサーバーに接続できません。`python backend/main.py`を起動してください。")
+        except Exception as e:
+            st.error(f"❌ エラー: {str(e)}")
+
+    # ジョブ実行中の表示
+    if st.session_state.get("job_running", False):
+        job_id = st.session_state["job_id"]
+        offset = st.session_state.get("log_offset", 0)
+
+        # ログ取得API呼び出し
+        try:
+            log_response = requests.get(
+                f"http://localhost:8000/api/jobs/logs/{job_id}",
+                params={"offset": offset},
+                timeout=5
+            )
+
+            if log_response.status_code == 200:
+                log_data = log_response.json()
+
+                # ステータス表示
+                status = log_data["status"]
+                if status == "queued":
+                    st.info("⏳ 待機中...")
+                elif status == "started":
+                    st.warning("▶️ 実行中...")
+                elif status == "finished":
+                    st.success("✅ 完了！")
+                    st.session_state["job_running"] = False
+                elif status == "failed":
+                    st.error("❌ 失敗")
+                    st.session_state["job_running"] = False
+                elif status == "not_found":
+                    st.error("❌ ジョブが見つかりません")
+                    st.session_state["job_running"] = False
+
+                # ログ表示
+                if log_data["logs"]:
+                    st.markdown("### 📝 リアルタイムログ")
+
+                    # 全ログを蓄積して表示
+                    st.session_state["all_logs"].extend(log_data["logs"])
+                    st.session_state["log_offset"] = log_data["total_logs"]
+
+                    # コードブロックで表示
+                    st.code("\n".join(st.session_state["all_logs"]), language="")
+
+                # 結果表示
+                if log_data["result"]:
+                    st.markdown("### 🎯 実行結果")
+                    st.json(log_data["result"])
+
+                # 未完了なら0.5秒後にリロード
+                if log_data["has_more"]:
+                    time.sleep(0.5)
+                    st.rerun()
+            else:
+                st.error(f"❌ ログ取得エラー: {log_response.status_code}")
+                st.session_state["job_running"] = False
+
+        except requests.exceptions.ConnectionError:
+            st.error("❌ FastAPIサーバーに接続できません")
+            st.session_state["job_running"] = False
+        except Exception as e:
+            st.error(f"❌ エラー: {str(e)}")
+            st.session_state["job_running"] = False
+
+
 def show_news(symbol):
     """ニュース一覧表示"""
     col1, col2 = st.columns([3, 1])
@@ -790,6 +906,11 @@ def main():
             df[['open', 'high', 'low', 'close', 'volume', 'RSI', 'MACD']].tail(20),
             width='stretch'
         )
+
+    st.markdown("---")
+
+    # バックグラウンドジョブ実行（Phase 2）
+    show_job_with_realtime_logs()
 
     st.markdown("---")
 
