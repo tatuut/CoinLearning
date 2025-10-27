@@ -1038,7 +1038,7 @@ curl http://localhost:8000/api/jobs/status/abc-123-def
 
 ---
 
-## 📖 Scene 4: 進行状況の可視化 - WebSocketの必然性
+## 📖 Scene 4: 進行状況の可視化 - リアルタイムフック
 
 ### 翌日、ユウタの疑問
 
@@ -1055,6 +1055,8 @@ curl http://localhost:8000/api/jobs/status/abc-123-def
 ---
 
 ### Claude CodeのAgentic実行を理解する
+
+**ミコ**: 「まず、なぜリアルタイムログが必要か理解しよう」
 
 **ミコ**: 「Claude Codeは**Agenticに動く**んだ」
 
@@ -1091,124 +1093,214 @@ Turn 6: 「完了しました。5件の記事を分析し、平均センチメ�
 
 **ミコ**: 「そう。だから**各ターンの進行状況をリアルタイムで見たい**」
 
-**ユウタ**: 「なるほど！だからWebSocketか！」
+**ユウタ**: 「確かに！じゃないと何やってるか分からないもんな」
+
+**ミコ**: 「しかもStreamlitダッシュボードで見たい」
+
+**ユウタ**: 「別ウィンドウじゃなくて？」
+
+**ミコ**: 「そう。1つの画面で完結する方がUXが良い」
 
 ---
 
-### WebSocketの実装
+### ステップ1: Redisにログを蓄積する
 
-**ミコ**: 「WebSocketを追加する」
+**ミコ**: 「まず、Workerが出力したログをRedisに保存する」
 
-**`backend/api/websocket.py`**:
-```python
-"""WebSocket for real-time logging"""
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from typing import Dict, Set
+**ユウタ**: 「なんでRedis？」
 
-router = APIRouter()
+**ミコ**: 「こういう理由だ」
 
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: Dict[str, Set[WebSocket]] = {}
+```
+【ログの保存先の選択肢】
 
-    async def connect(self, websocket: WebSocket, job_id: str):
-        await websocket.accept()
-        if job_id not in self.active_connections:
-            self.active_connections[job_id] = set()
-        self.active_connections[job_id].add(websocket)
+1. メモリ（Pythonのdict）
+   → Workerプロセスが別だから共有できない ❌
 
-    def disconnect(self, websocket: WebSocket, job_id: str):
-        if job_id in self.active_connections:
-            self.active_connections[job_id].discard(websocket)
+2. ファイル
+   → 読み書きが遅い、並行アクセスが大変 ❌
 
-    async def send_log(self, job_id: str, message: str):
-        """ログをWebSocket経由で配信"""
-        if job_id in self.active_connections:
-            for conn in self.active_connections[job_id]:
-                try:
-                    await conn.send_json({"type": "log", "message": message})
-                except:
-                    pass
-
-manager = ConnectionManager()
-
-@router.websocket("/logs/{job_id}")
-async def websocket_logs(websocket: WebSocket, job_id: str):
-    await manager.connect(websocket, job_id)
-    try:
-        while True:
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        manager.disconnect(websocket, job_id)
+3. Redis
+   → 高速、複数プロセスから共有可能 ✅
+   → List型でログを順番に蓄積できる ✅
 ```
 
+**ユウタ**: 「なるほど、Redisならプロセス間で共有できるのか」
+
+**ミコ**: 「そう」
+
 ---
 
-**ワーカーをWebSocket対応に修正**:
-
-`backend/workers/dummy_worker.py`:
+**Workerを修正（`backend/workers/dummy_worker.py`）**:
 ```python
+"""Phase 2: ダミーワーカー（ログをRedisに蓄積）"""
 import time
-import asyncio
-
-async def async_log(message: str, job_id: str):
-    """WebSocketログ送信"""
-    from backend.api.websocket import manager
-    await manager.send_log(job_id, message)
+from redis import Redis
+from backend.config import settings
 
 def dummy_job(symbol: str, job_id: str = None):
-    """ダミージョブ（WebSocket対応）"""
+    """Claude Code実行をシミュレート"""
+
+    # Redis接続
+    redis_conn = Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
 
     def log(msg):
+        """ログ出力＋Redis蓄積"""
         print(f"[DUMMY] {msg}")
 
-        # WebSocketで配信
+        # Redisに追記
         if job_id:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(async_log(msg, job_id))
-            loop.close()
+            redis_conn.rpush(f"logs:{job_id}", msg)
 
     log(f"🚀 Job started for {symbol}")
+
+    # Step 1: WebSearch シミュレート
     log("⏳ Step 1/3: Simulating WebSearch...")
     time.sleep(2)
-    log("✅ Step 1 done")
+    log("✅ Step 1 done: Found 5 articles")
 
+    # Step 2: Analysis シミュレート
     log("⏳ Step 2/3: Simulating analysis...")
     time.sleep(2)
-    log("✅ Step 2 done")
+    log("✅ Step 2 done: Average sentiment +0.45")
 
+    # Step 3: DB Save シミュレート
     log("⏳ Step 3/3: Simulating DB save...")
     time.sleep(1)
-    log("✅ Step 3 done")
+    log("✅ Step 3 done: Saved to database")
 
     log("🎉 Completed!")
 
-    return {"success": True, "symbol": symbol}
+    # ログの有効期限を設定（1時間）
+    if job_id:
+        redis_conn.expire(f"logs:{job_id}", 3600)
+
+    return {
+        "success": True,
+        "symbol": symbol,
+        "news_count": 5,
+        "avg_sentiment": 0.45
+    }
 ```
+
+**ミコ**: 「`redis_conn.rpush()`でログを追記している」
+
+```
+【Redisのrpush()とは】
+
+List型データ構造:
+  logs:abc-123-def → ["log1", "log2", "log3"]
+
+rpush(key, value):
+  → リストの末尾に要素を追加
+
+例:
+  rpush("logs:abc-123-def", "🚀 Job started for BTC")
+  rpush("logs:abc-123-def", "⏳ Step 1/3: Simulating WebSearch...")
+  rpush("logs:abc-123-def", "✅ Step 1 done")
+
+結果:
+  logs:abc-123-def → ["🚀 Job started for BTC", "⏳ Step 1/3...", "✅ Step 1 done"]
+```
+
+**ユウタ**: 「なるほど、順番に蓄積されるわけか」
+
+**ミコ**: 「そう。`expire()`で1時間後に自動削除も設定した」
 
 ---
 
-**ジョブAPI修正（job_idを渡す）**:
+### ステップ2: ログ取得APIを作る
 
-`backend/api/jobs.py`:
+**ミコ**: 「次は、Redisからログを取得するAPI」
+
+**`backend/api/jobs.py`に追加**:
+```python
+@router.get("/logs/{job_id}")
+async def get_logs(job_id: str, offset: int = 0):
+    """ジョブのログを取得（増分）"""
+
+    # Redisからログを取得（offset以降）
+    logs = redis_conn.lrange(f"logs:{job_id}", offset, -1)
+    logs = [log.decode('utf-8') for log in logs]
+
+    # ジョブステータスも一緒に返す
+    from rq.job import Job
+    try:
+        job = Job.fetch(job_id, connection=redis_conn)
+        status = job.get_status()
+        result = job.result if job.is_finished else None
+    except:
+        status = "not_found"
+        result = None
+
+    return {
+        "job_id": job_id,
+        "status": status,
+        "logs": logs,
+        "total_logs": offset + len(logs),
+        "has_more": status not in ["finished", "failed"],
+        "result": result
+    }
+```
+
+**ミコ**: 「`offset`パラメータがポイントだ」
+
+```
+【offsetの仕組み】
+
+初回リクエスト:
+  GET /api/jobs/logs/abc-123-def?offset=0
+  → logs[0:] を返す（全て）
+  → 3件返した → total_logs: 3
+
+2回目（0.5秒後）:
+  GET /api/jobs/logs/abc-123-def?offset=3
+  → logs[3:] を返す（3番目以降の新しいログのみ）
+  → 2件返した → total_logs: 5
+
+3回目（0.5秒後）:
+  GET /api/jobs/logs/abc-123-def?offset=5
+  → logs[5:] を返す（5番目以降の新しいログのみ）
+  → 1件返した → total_logs: 6
+```
+
+**ユウタ**: 「おお、差分だけ取得するのか！効率的だな」
+
+**ミコ**: 「そう。全ログを毎回取得すると無駄だからな」
+
+---
+
+### ステップ3: ジョブAPI修正（job_id渡し）
+
+**ミコ**: 「Workerにjob_idを渡す必要がある」
+
+**ユウタ**: 「でもjob_idってenqueue()した後じゃないと分からないよね？」
+
+**ミコ**: 「鶏卵問題だな。解決策はこうだ」
+
+**`backend/api/jobs.py`の`start_job()`を修正**:
 ```python
 @router.post("/start")
 async def start_job(request: JobRequest):
-    """ジョブ開始（job_id付き）"""
-    # 一旦エンキューしてjob_idを取得
-    job = queue.enqueue(
+    """ジョブ開始"""
+
+    # Step 1: まずjob_idなしでエンキュー（job_idを取得するため）
+    temp_job = queue.enqueue(
         dummy_job,
         args=(request.symbol,),
         kwargs={"job_id": None},
         job_timeout='10m'
     )
 
-    # job_idを渡して再エンキュー
+    # Step 2: 一旦キャンセル
+    temp_job.cancel()
+
+    # Step 3: 正しいjob_idを渡して再エンキュー
     job = queue.enqueue(
         dummy_job,
         args=(request.symbol,),
-        kwargs={"job_id": job.id},
+        kwargs={"job_id": temp_job.id},
+        job_id=temp_job.id,  # ← 同じIDを使う
         job_timeout='10m'
     )
 
@@ -1219,85 +1311,226 @@ async def start_job(request: JobRequest):
     }
 ```
 
+**ミコ**: 「一旦ダミーでenqueueしてIDを取得、キャンセルして、そのIDで再enqueue」
+
+**ユウタ**: 「なるほど、ちょっとトリッキーだけど動くわけか」
+
 ---
 
-**`backend/main.py`にWebSocketルーター追加**:
+### ステップ4: Streamlit UIでリアルタイム表示
+
+**ミコ**: 「いよいよStreamlit UI統合だ」
+
+**ユウタ**: 「これが一番楽しみ！」
+
+**Streamlit UI（`src/tools/parquet_dashboard.py`に追加）**:
 ```python
-from backend.api.websocket import router as ws_router
-app.include_router(ws_router, prefix="/ws", tags=["websocket"])
+import streamlit as st
+import requests
+import time
+
+def show_job_with_realtime_logs():
+    """リアルタイムログ付きジョブ実行"""
+
+    st.subheader("🤖 バックグラウンドジョブ実行（リアルタイムログ）")
+
+    # シンボル選択
+    symbol = st.selectbox("仮想通貨を選択", ["BTC", "ETH", "XRP"])
+
+    # ジョブ開始ボタン
+    if st.button("🚀 ニュース分析開始"):
+        # ジョブ開始API呼び出し
+        response = requests.post(
+            "http://localhost:8000/api/jobs/start",
+            json={"symbol": symbol}
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            st.session_state["job_id"] = data["job_id"]
+            st.session_state["log_offset"] = 0
+            st.session_state["job_running"] = True
+            st.success(f"✅ ジョブ開始！ Job ID: {data['job_id']}")
+            st.rerun()  # 即座にリロード
+
+    # ジョブ実行中の表示
+    if st.session_state.get("job_running", False):
+        job_id = st.session_state["job_id"]
+        offset = st.session_state.get("log_offset", 0)
+
+        # ログ取得API呼び出し
+        log_response = requests.get(
+            f"http://localhost:8000/api/jobs/logs/{job_id}",
+            params={"offset": offset}
+        )
+
+        if log_response.status_code == 200:
+            log_data = log_response.json()
+
+            # ステータス表示
+            status = log_data["status"]
+            if status == "queued":
+                st.info("⏳ 待機中...")
+            elif status == "started":
+                st.warning("▶️ 実行中...")
+            elif status == "finished":
+                st.success("✅ 完了！")
+                st.session_state["job_running"] = False
+            elif status == "failed":
+                st.error("❌ 失敗")
+                st.session_state["job_running"] = False
+
+            # ログ表示
+            if log_data["logs"]:
+                st.markdown("### 📝 リアルタイムログ")
+
+                # 全ログを蓄積して表示
+                if "all_logs" not in st.session_state:
+                    st.session_state["all_logs"] = []
+
+                st.session_state["all_logs"].extend(log_data["logs"])
+                st.session_state["log_offset"] = log_data["total_logs"]
+
+                # コードブロックで表示
+                st.code("\n".join(st.session_state["all_logs"]), language="")
+
+            # 結果表示
+            if log_data["result"]:
+                st.markdown("### 🎯 実行結果")
+                st.json(log_data["result"])
+
+            # 未完了なら0.5秒後にリロード
+            if log_data["has_more"]:
+                time.sleep(0.5)
+                st.rerun()
 ```
+
+**ミコ**: 「ポイントを説明するぞ」
+
+```
+【リアルタイム表示の仕組み】
+
+1. ボタンクリック
+   → ジョブ開始API呼び出し
+   → st.session_state["job_id"] に保存
+   → st.rerun() で即座にリロード
+
+2. ログ取得（0.5秒ごと）
+   → GET /api/jobs/logs/{job_id}?offset=X
+   → 新しいログのみ取得
+   → st.session_state["all_logs"] に追加
+   → st.code() で表示
+
+3. ステータスチェック
+   → has_more == True なら継続
+   → time.sleep(0.5) → st.rerun()
+
+4. 完了
+   → has_more == False
+   → ループ終了
+   → 結果を表示
+```
+
+**ユウタ**: 「`st.rerun()`で自動リロードするのか！」
+
+**ミコ**: 「そう。0.5秒ごとに新しいログを取得して表示更新」
 
 ---
 
-### WebSocketテスト
+### ステップ5: 動作確認
 
-**テスト用HTML（`test_ws.html`）**:
-```html
-<!DOCTYPE html>
-<html>
-<head><title>WebSocket Test</title></head>
-<body>
-    <h1>WebSocket Log Viewer</h1>
-    <input type="text" id="jobId" placeholder="Job ID">
-    <button onclick="connect()">Connect</button>
-    <button onclick="disconnect()">Disconnect</button>
-    <pre id="logs" style="height: 400px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px;"></pre>
+**ユウタ**: 「じゃあテストしてみよう！」
 
-    <script>
-        let ws;
-
-        function connect() {
-            const jobId = document.getElementById('jobId').value;
-            if (!jobId) {
-                alert('Please enter Job ID');
-                return;
-            }
-
-            ws = new WebSocket(`ws://localhost:8000/ws/logs/${jobId}`);
-
-            ws.onopen = () => {
-                addLog('[WebSocket Connected]');
-            };
-
-            ws.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                addLog(data.message);
-            };
-
-            ws.onclose = () => {
-                addLog('[WebSocket Disconnected]');
-            };
-        }
-
-        function disconnect() {
-            if (ws) {
-                ws.close();
-                ws = null;
-            }
-        }
-
-        function addLog(message) {
-            const logArea = document.getElementById('logs');
-            const timestamp = new Date().toLocaleTimeString();
-            logArea.textContent += `[${timestamp}] ${message}\n`;
-            logArea.scrollTop = logArea.scrollHeight;
-        }
-    </script>
-</body>
-</html>
+**ターミナル1: FastAPI起動**:
+```bash
+python backend/main.py
 ```
 
-**テスト手順**:
-1. FastAPI起動
-2. RQワーカー起動
-3. curlでジョブ開始、job_idをメモ
-4. `test_ws.html`を開いてjob_idを入力
-5. 「Connect」クリック
-6. リアルタイムでログが流れる
+**ターミナル2: RQワーカー起動**:
+```bash
+rq worker --url redis://localhost:6379
+```
 
-**ユウタ**: 「おお！ブラウザでログが見える！」
+**ターミナル3: Streamlit起動**:
+```bash
+streamlit run src/tools/parquet_dashboard.py
+```
 
-**ミコ**: 「これでPhase 3でClaude Codeの実行経過も見れるようになる」
+**ブラウザでStreamlitを開く → 「🚀 ニュース分析開始」クリック**
+
+**Streamlit画面の表示（リアルタイムで更新）**:
+```
+🤖 バックグラウンドジョブ実行（リアルタイムログ）
+
+仮想通貨を選択: [BTC]
+[🚀 ニュース分析開始]
+
+✅ ジョブ開始！ Job ID: abc-123-def
+
+▶️ 実行中...
+
+### 📝 リアルタイムログ
+
+🚀 Job started for BTC
+⏳ Step 1/3: Simulating WebSearch...
+✅ Step 1 done: Found 5 articles
+⏳ Step 2/3: Simulating analysis...
+✅ Step 2 done: Average sentiment +0.45
+⏳ Step 3/3: Simulating DB save...
+✅ Step 3 done: Saved to database
+🎉 Completed!
+
+✅ 完了！
+
+### 🎯 実行結果
+{
+  "success": true,
+  "symbol": "BTC",
+  "news_count": 5,
+  "avg_sentiment": 0.45
+}
+```
+
+**ユウタ**: 「おおおお！リアルタイムでログが流れてる！」
+
+**ユウタ**: 「しかも1つの画面で完結してる！」
+
+**ミコ**: 「これがリアルタイムフックだ」
+
+---
+
+### まとめ: リアルタイムフックの仕組み
+
+**ミコ**: 「整理するぞ」
+
+```
+【リアルタイムフックの全体像】
+
+1. Worker（バックグラウンド）
+   → redis_conn.rpush(f"logs:{job_id}", msg)
+   → ログをRedisに蓄積
+
+2. FastAPI（ログ取得API）
+   → GET /api/jobs/logs/{job_id}?offset=X
+   → Redis.lrange() で差分ログ取得
+   → ステータスも一緒に返す
+
+3. Streamlit UI（ポーリング）
+   → 0.5秒ごとにログ取得API呼び出し
+   → 新しいログを all_logs に追加
+   → st.code() で表示
+   → has_more == True なら st.rerun()
+
+メリット:
+  ✅ 1つの画面で完結
+  ✅ シンプルな実装（HTTP GET のみ）
+  ✅ デバッグしやすい
+  ✅ 十分なリアルタイム性（0.5秒更新）
+```
+
+**ユウタ**: 「これならPhase 3でClaude Codeに置き換えても同じ仕組みで動くな」
+
+**ミコ**: 「その通り。Phase 2完成だ」
 
 ---
 
