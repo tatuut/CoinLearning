@@ -13,7 +13,8 @@
       "Bash(PORT=3001 npm start)",
       "Bash(python:*)",
       "Bash(claude:*)",
-      "Bash(timeout 30 python claude_client.py --server ws://localhost:3003 --prompt \"こんにちは！\")"
+      "Bash(timeout 30 python claude_client.py --server ws://localhost:3003 --prompt \"こんにちは！\")",
+      "Bash(PORT=3004 npm start)"
     ],
     "deny": [],
     "ask": []

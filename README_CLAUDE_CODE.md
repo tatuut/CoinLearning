@@ -95,16 +95,41 @@ npm start
 
 ---
 
-## 💬 CLIクライアント使用方法
+## 💬 使用方法
 
-### インタラクティブモード
+### 1. Streamlit チャットUI（推奨）
+
+Webブラウザで使える、最も使いやすいインターフェースです。
+
+```bash
+# 依存関係インストール（初回のみ）
+cd ui
+pip install -r requirements.txt
+
+# Streamlitアプリ起動
+streamlit run claude_chat.py
+```
+
+**機能:**
+- ✅ チャット形式の対話インターフェース
+- ✅ メッセージ履歴の保存・表示
+- ✅ 履歴のクリア・JSONダウンロード
+- ✅ タイムスタンプ付きメッセージ
+- ✅ サーバー接続テスト
+- ✅ API料金表示（$0.00）
+
+### 2. CLIクライアント
+
+ターミナルから直接使用できます。
+
+**インタラクティブモード:**
 
 ```bash
 cd cli
 python claude_client.py
 ```
 
-### ワンショットクエリ
+**ワンショットクエリ:**
 
 ```bash
 # 基本的な使い方
@@ -115,6 +140,29 @@ python claude_client.py --prompt "src/ディレクトリの構造を調べて"
 
 # コード生成
 python claude_client.py --prompt "Pythonでフィボナッチ数列を実装して"
+```
+
+### 3. REST API
+
+プログラムから直接呼び出せます。
+
+```bash
+curl -X POST http://localhost:3003/api/query \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "こんにちは"}'
+```
+
+**レスポンス例:**
+```json
+{
+  "success": true,
+  "response": "こんにちは！何かお手伝いできることはありますか？",
+  "billing": {
+    "total_cost_usd": 0,
+    "note": "Max 20x Plan - no API charges"
+  },
+  "timestamp": "2025-10-28T13:50:06.352Z"
+}
 ```
 
 **使用例:**

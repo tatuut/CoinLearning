@@ -195,6 +195,93 @@ async function handleClaudeQuery(ws, message) {
   }
 }
 
+// REST API: 非ストリーミング版
+app.post('/api/query', async (req, res) => {
+  const { prompt, options = {} } = req.body;
+
+  if (!prompt) {
+    return res.status(400).json({ error: 'prompt が必要です' });
+  }
+
+  try {
+    // Claude CLIコマンド構築
+    const args = [
+      '--print',
+      '--output-format', 'text'
+    ];
+
+    // オプション追加
+    if (options.allowedTools) {
+      args.push('--allowed-tools', ...options.allowedTools);
+    }
+
+    // プロンプトを最後に追加
+    args.push(prompt);
+
+    console.log(`[REST API] プロンプト: ${prompt.substring(0, 100)}...`);
+
+    // Claude CLIを子プロセスとして起動
+    const claude = spawn('claude', args, {
+      cwd: options.cwd || process.cwd(),
+      shell: true,
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+
+    claude.stdin.end();
+
+    // 出力を収集
+    let fullText = '';
+    let errorText = '';
+
+    claude.stdout.on('data', (chunk) => {
+      fullText += chunk.toString();
+    });
+
+    claude.stderr.on('data', (chunk) => {
+      errorText += chunk.toString();
+    });
+
+    // プロセス終了を待つ
+    claude.on('close', (code) => {
+      console.log(`[REST API] Claude CLI終了: code ${code}`);
+
+      if (code === 0) {
+        res.json({
+          success: true,
+          response: fullText,
+          billing: {
+            total_cost_usd: 0,
+            note: 'Max 20x Plan - no API charges'
+          },
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        res.status(500).json({
+          error: `Claude CLI exited with code ${code}`,
+          stderr: errorText,
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+
+    // エラーハンドリング
+    claude.on('error', (error) => {
+      console.error('[REST API] エラー:', error);
+      res.status(500).json({
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    });
+
+  } catch (error) {
+    console.error('[REST API] エラー:', error);
+    res.status(500).json({
+      error: error.message,
+      stack: error.stack
+    });
+  }
+});
+
 // サーバー起動
 server.listen(PORT, HOST, () => {
   console.log('='.repeat(60));
@@ -210,6 +297,7 @@ server.listen(PORT, HOST, () => {
   console.log('利用可能なエンドポイント:');
   console.log(`  GET  /health       - ヘルスチェック`);
   console.log(`  GET  /api/info     - 情報取得`);
+  console.log(`  POST /api/query    - REST API (非ストリーミング)`);
   console.log(`  WS   /             - WebSocket (ストリーミング)`);
   console.log('='.repeat(60));
 });
