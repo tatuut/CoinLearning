@@ -2,11 +2,11 @@ import express from 'express';
 import cors from 'cors';
 import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
-import dotenv from 'dotenv';
 import { query } from '@anthropic-ai/claude-agent-sdk';
-
-// 環境変数読み込み
-dotenv.config();
+import { z } from 'zod';
+import os from 'os';
+import path from 'path';
+import fs from 'fs';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -22,23 +22,79 @@ const server = createServer(app);
 // WebSocketサーバー作成
 const wss = new WebSocketServer({ server });
 
-// WebSocket接続管理
+// 接続管理
 const connections = new Map();
+
+/**
+ * Claude Code OAuth トークンを取得
+ * macOS: Keychain
+ * Windows: ユーザーディレクトリの.claude/config
+ * Linux: ~/.claude/config
+ */
+function getClaudeCodeToken() {
+  // 環境変数から直接取得を試みる
+  if (process.env.CLAUDE_CODE_OAUTH_TOKEN) {
+    return process.env.CLAUDE_CODE_OAUTH_TOKEN;
+  }
+
+  // 設定ファイルから取得を試みる
+  const homeDir = os.homedir();
+  const configPath = path.join(homeDir, '.claude', 'config.json');
+
+  try {
+    if (fs.existsSync(configPath)) {
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      // OAuth トークンがあれば返す
+      if (config.oauth_token) {
+        return config.oauth_token;
+      }
+    }
+  } catch (error) {
+    console.warn('[Warning] Claude Code設定ファイル読み込みエラー:', error.message);
+  }
+
+  return null;
+}
+
+/**
+ * Claude Code認証状態を確認
+ */
+function checkClaudeCodeAuth() {
+  const token = getClaudeCodeToken();
+
+  if (!token) {
+    console.warn('⚠️  Claude Code OAuth トークンが見つかりません');
+    console.warn('');
+    console.warn('以下のコマンドで認証してください:');
+    console.warn('  claude login');
+    console.warn('');
+    console.warn('または、長期トークンを生成して環境変数に設定:');
+    console.warn('  claude setup-token');
+    console.warn('  export CLAUDE_CODE_OAUTH_TOKEN=<token>');
+    return false;
+  }
+
+  return true;
+}
 
 // ヘルスチェック
 app.get('/health', (req, res) => {
+  const authOk = checkClaudeCodeAuth();
   res.json({
-    status: 'ok',
+    status: authOk ? 'ok' : 'warning',
     timestamp: new Date().toISOString(),
-    apiKeyConfigured: !!process.env.ANTHROPIC_API_KEY
+    authMethod: 'Claude Plan Max (OAuth)',
+    authenticated: authOk
   });
 });
 
 // Claude Agent SDK情報取得
 app.get('/api/info', (req, res) => {
   res.json({
-    model: process.env.CLAUDE_MODEL || 'claude-sonnet-4-5-20250929',
-    maxTurns: parseInt(process.env.MAX_TURNS) || 10,
+    model: 'claude-sonnet-4-5-20250929',
+    authMethod: 'Claude Plan Max Subscription',
+    maxTurns: 10,
+    billing: 'Max 20x Plan (no API charges)',
     sdkVersion: 'latest'
   });
 });
@@ -50,10 +106,14 @@ wss.on('connection', (ws) => {
 
   console.log(`[WebSocket] 新規接続: ${connectionId}`);
 
+  // 認証状態確認
+  const authOk = checkClaudeCodeAuth();
+
   // 接続成功メッセージ
   ws.send(JSON.stringify({
     type: 'connected',
     connectionId,
+    authenticated: authOk,
     timestamp: new Date().toISOString()
   }));
 
@@ -65,7 +125,10 @@ wss.on('connection', (ws) => {
       if (message.type === 'query') {
         await handleClaudeQuery(ws, message);
       } else if (message.type === 'ping') {
-        ws.send(JSON.stringify({ type: 'pong', timestamp: new Date().toISOString() }));
+        ws.send(JSON.stringify({
+          type: 'pong',
+          timestamp: new Date().toISOString()
+        }));
       }
     } catch (error) {
       console.error('[WebSocket] エラー:', error);
@@ -95,10 +158,10 @@ wss.on('connection', (ws) => {
 async function handleClaudeQuery(ws, message) {
   const { prompt, options = {} } = message;
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!checkClaudeCodeAuth()) {
     ws.send(JSON.stringify({
       type: 'error',
-      error: 'ANTHROPIC_API_KEY が設定されていません',
+      error: 'Claude Code OAuth 認証が必要です。`claude login` を実行してください。',
       timestamp: new Date().toISOString()
     }));
     return;
@@ -112,17 +175,19 @@ async function handleClaudeQuery(ws, message) {
     }));
 
     // Claude Agent SDK query実行
+    // OAuth トークンは SDK が自動的に使用（環境変数 or 設定ファイルから）
     const queryOptions = {
-      model: options.model || process.env.CLAUDE_MODEL || 'claude-sonnet-4-5-20250929',
-      maxTurns: options.maxTurns || parseInt(process.env.MAX_TURNS) || 10,
+      model: options.model || 'claude-sonnet-4-5-20250929',
+      maxTurns: options.maxTurns || 10,
       systemPrompt: options.systemPrompt,
       allowedTools: options.allowedTools,
       cwd: options.cwd || process.cwd(),
+      includePartialMessages: true,
       ...options
     };
 
     console.log(`[Claude Query] プロンプト: ${prompt.substring(0, 100)}...`);
-    console.log(`[Claude Query] オプション:`, queryOptions);
+    console.log(`[Claude Query] オプション:`, JSON.stringify(queryOptions, null, 2));
 
     const result = query({
       prompt,
@@ -131,10 +196,13 @@ async function handleClaudeQuery(ws, message) {
 
     // ストリーミング結果を順次送信
     for await (const sdkMessage of result) {
-      // SDKメッセージをクライアントに送信
+      // メッセージタイプに応じて処理
+      const event = convertSdkMessageToEvent(sdkMessage);
+
       ws.send(JSON.stringify({
         type: 'message',
-        data: sdkMessage,
+        event: event,
+        raw: sdkMessage,
         timestamp: new Date().toISOString()
       }));
     }
@@ -158,7 +226,50 @@ async function handleClaudeQuery(ws, message) {
   }
 }
 
-// REST API: 非ストリーミング版（シンプルな応答）
+/**
+ * SDK メッセージをイベント形式に変換
+ */
+function convertSdkMessageToEvent(sdkMessage) {
+  const role = sdkMessage.role;
+  const content = sdkMessage.content || [];
+
+  // アシスタントメッセージ
+  if (role === 'assistant') {
+    const textBlocks = content.filter(c => c.type === 'text');
+    const toolUseBlocks = content.filter(c => c.type === 'tool_use');
+
+    return {
+      type: 'assistant_message',
+      text: textBlocks.map(b => b.text).join('\n'),
+      toolUses: toolUseBlocks.map(b => ({
+        id: b.id,
+        name: b.name,
+        input: b.input
+      }))
+    };
+  }
+
+  // ツール結果
+  if (role === 'user' && content.some(c => c.type === 'tool_result')) {
+    const toolResults = content.filter(c => c.type === 'tool_result');
+    return {
+      type: 'tool_results',
+      results: toolResults.map(r => ({
+        id: r.tool_use_id,
+        content: r.content
+      }))
+    };
+  }
+
+  // その他
+  return {
+    type: 'unknown',
+    role,
+    content
+  };
+}
+
+// REST API: 非ストリーミング版
 app.post('/api/query', async (req, res) => {
   const { prompt, options = {} } = req.body;
 
@@ -166,14 +277,17 @@ app.post('/api/query', async (req, res) => {
     return res.status(400).json({ error: 'prompt が必要です' });
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return res.status(500).json({ error: 'ANTHROPIC_API_KEY が設定されていません' });
+  if (!checkClaudeCodeAuth()) {
+    return res.status(500).json({
+      error: 'Claude Code OAuth 認証が必要です',
+      hint: 'claude login を実行してください'
+    });
   }
 
   try {
     const queryOptions = {
-      model: options.model || process.env.CLAUDE_MODEL || 'claude-sonnet-4-5-20250929',
-      maxTurns: options.maxTurns || parseInt(process.env.MAX_TURNS) || 10,
+      model: options.model || 'claude-sonnet-4-5-20250929',
+      maxTurns: options.maxTurns || 10,
       systemPrompt: options.systemPrompt,
       allowedTools: options.allowedTools,
       cwd: options.cwd || process.cwd(),
@@ -193,6 +307,10 @@ app.post('/api/query', async (req, res) => {
     res.json({
       success: true,
       messages,
+      billing: {
+        total_cost_usd: 0,
+        note: 'Max 20x Plan - no API charges'
+      },
       timestamp: new Date().toISOString()
     });
 
@@ -207,18 +325,35 @@ app.post('/api/query', async (req, res) => {
 
 // サーバー起動
 server.listen(PORT, HOST, () => {
+  const authOk = checkClaudeCodeAuth();
+
   console.log('='.repeat(60));
-  console.log('🚀 Claude Agent SDK Server 起動');
+  console.log('🚀 Claude Code Server 起動');
   console.log('='.repeat(60));
   console.log(`📡 HTTP Server: http://${HOST}:${PORT}`);
   console.log(`🔌 WebSocket: ws://${HOST}:${PORT}`);
-  console.log(`🔑 API Key: ${process.env.ANTHROPIC_API_KEY ? '設定済み ✅' : '未設定 ❌'}`);
+  console.log(`🔐 認証方式: Claude Plan Max (OAuth)`);
+  console.log(`✅ 認証状態: ${authOk ? '認証済み' : '未認証'}`);
+  console.log(`💰 課金: Max 20x Plan (API料金なし)`);
   console.log('='.repeat(60));
   console.log('');
-  console.log('利用可能なエンドポイント:');
-  console.log(`  GET  /health       - ヘルスチェック`);
-  console.log(`  GET  /api/info     - SDK情報取得`);
-  console.log(`  POST /api/query    - REST API (非ストリーミング)`);
-  console.log(`  WS   /             - WebSocket (ストリーミング)`);
-  console.log('='.repeat(60));
+
+  if (!authOk) {
+    console.log('⚠️  認証が必要です。以下のコマンドを実行してください:');
+    console.log('');
+    console.log('  claude login');
+    console.log('');
+    console.log('または、長期トークンを生成:');
+    console.log('  claude setup-token');
+    console.log('  export CLAUDE_CODE_OAUTH_TOKEN=<token>');
+    console.log('');
+    console.log('='.repeat(60));
+  } else {
+    console.log('利用可能なエンドポイント:');
+    console.log(`  GET  /health       - ヘルスチェック`);
+    console.log(`  GET  /api/info     - SDK情報取得`);
+    console.log(`  POST /api/query    - REST API (非ストリーミング)`);
+    console.log(`  WS   /             - WebSocket (ストリーミング)`);
+    console.log('='.repeat(60));
+  }
 });

@@ -1,6 +1,8 @@
-# CLI - Claude Client
+# CLI - Claude Code Client
 
-Python製CLIクライアント（WebSocket経由でバックエンドと通信）
+Python製CLIクライアント（Claude Plan Max OAuth認証）
+
+---
 
 ## セットアップ
 
@@ -9,6 +11,21 @@ Python製CLIクライアント（WebSocket経由でバックエンドと通信�
 pip install -r requirements.txt
 ```
 
+---
+
+## 事前準備
+
+バックエンドサーバーが起動している必要があります：
+
+```bash
+# backend/ ディレクトリで
+npm start
+```
+
+サーバーが `claude login` で認証済みであることを確認してください。
+
+---
+
 ## 使用方法
 
 ### インタラクティブモード
@@ -16,6 +33,8 @@ pip install -r requirements.txt
 ```bash
 python claude_client.py
 ```
+
+対話形式でClaude Codeと会話できます。
 
 ### ワンショットクエリ
 
@@ -36,13 +55,26 @@ python claude_client.py --prompt "バグ修正" --max-turns 5
 python claude_client.py --server ws://192.168.1.100:3000
 ```
 
+---
+
 ## ヘルプ
 
 ```bash
 python claude_client.py --help
 ```
 
+---
+
 ## 必須条件
 
 - Python 3.8以上
 - バックエンドサーバーが起動していること
+- サーバーが `claude login` で認証済みであること
+
+---
+
+## 課金
+
+**API料金: $0.00**
+
+Claude Plan Max（OAuth認証）を使用します。
