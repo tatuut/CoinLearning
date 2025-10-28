@@ -8,16 +8,22 @@ WebSocket経由でClaude Code（Claude Plan Max）と対話します。
 import asyncio
 import json
 import sys
+import io
 import websockets
 from datetime import datetime
 from typing import Optional
 import argparse
 
+# Windows環境でのUTF-8出力設定
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
 
 class ClaudeCodeClient:
     """Claude Code クライアント（Claude Plan Max認証）"""
 
-    def __init__(self, server_url: str = "ws://localhost:3000"):
+    def __init__(self, server_url: str = "ws://localhost:3001"):
         self.server_url = server_url
         self.connection_id: Optional[str] = None
         self.authenticated: bool = False
@@ -191,7 +197,7 @@ async def main():
   python claude_client.py
 
   # サーバーURL指定
-  python claude_client.py --server ws://localhost:3000
+  python claude_client.py --server ws://localhost:3001
 
   # ワンショットクエリ
   python claude_client.py --prompt "Pythonでフィボナッチ数列を実装して"
@@ -209,8 +215,8 @@ async def main():
 
     parser.add_argument(
         '--server',
-        default='ws://localhost:3000',
-        help='サーバーURL (デフォルト: ws://localhost:3000)'
+        default='ws://localhost:3001',
+        help='サーバーURL (デフォルト: ws://localhost:3001)'
     )
     parser.add_argument(
         '--prompt', '-p',

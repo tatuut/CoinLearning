@@ -6,7 +6,14 @@
       "Bash(npm install)",
       "Bash(pip install:*)",
       "Bash(git add:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(git commit:*)",
+      "Read(//c/Users/tatut/.claude/**)",
+      "Bash(npm start)",
+      "Bash(PORT=3001 npm start)",
+      "Bash(python:*)",
+      "Bash(claude:*)",
+      "Bash(timeout 30 python claude_client.py --server ws://localhost:3003 --prompt \"こんにちは！\")"
     ],
     "deny": [],
     "ask": []

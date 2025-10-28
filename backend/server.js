@@ -27,9 +27,9 @@ const connections = new Map();
 
 /**
  * Claude Code OAuth トークンを取得
- * macOS: Keychain
- * Windows: ユーザーディレクトリの.claude/config
- * Linux: ~/.claude/config
+ * Windows: ~/.claude/.credentials.json
+ * macOS: ~/.claude/.credentials.json または Keychain
+ * Linux: ~/.claude/.credentials.json
  */
 function getClaudeCodeToken() {
   // 環境変数から直接取得を試みる
@@ -39,18 +39,18 @@ function getClaudeCodeToken() {
 
   // 設定ファイルから取得を試みる
   const homeDir = os.homedir();
-  const configPath = path.join(homeDir, '.claude', 'config.json');
+  const credentialsPath = path.join(homeDir, '.claude', '.credentials.json');
 
   try {
-    if (fs.existsSync(configPath)) {
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      // OAuth トークンがあれば返す
-      if (config.oauth_token) {
-        return config.oauth_token;
+    if (fs.existsSync(credentialsPath)) {
+      const credentials = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+      // OAuth アクセストークンを取得
+      if (credentials.claudeAiOauth?.accessToken) {
+        return credentials.claudeAiOauth.accessToken;
       }
     }
   } catch (error) {
-    console.warn('[Warning] Claude Code設定ファイル読み込みエラー:', error.message);
+    console.warn('[Warning] Claude Code認証情報読み込みエラー:', error.message);
   }
 
   return null;
@@ -158,7 +158,8 @@ wss.on('connection', (ws) => {
 async function handleClaudeQuery(ws, message) {
   const { prompt, options = {} } = message;
 
-  if (!checkClaudeCodeAuth()) {
+  const token = getClaudeCodeToken();
+  if (!token) {
     ws.send(JSON.stringify({
       type: 'error',
       error: 'Claude Code OAuth 認証が必要です。`claude login` を実行してください。',
@@ -174,8 +175,10 @@ async function handleClaudeQuery(ws, message) {
       timestamp: new Date().toISOString()
     }));
 
+    // 環境変数にトークンを設定（SDKがサブプロセスに渡すため）
+    process.env.ANTHROPIC_API_KEY = token;
+
     // Claude Agent SDK query実行
-    // OAuth トークンは SDK が自動的に使用（環境変数 or 設定ファイルから）
     const queryOptions = {
       model: options.model || 'claude-sonnet-4-5-20250929',
       maxTurns: options.maxTurns || 10,
@@ -196,6 +199,9 @@ async function handleClaudeQuery(ws, message) {
 
     // ストリーミング結果を順次送信
     for await (const sdkMessage of result) {
+      // デバッグ: メッセージ構造を出力
+      console.log('[DEBUG] SDK Message:', JSON.stringify(sdkMessage, null, 2));
+
       // メッセージタイプに応じて処理
       const event = convertSdkMessageToEvent(sdkMessage);
 
