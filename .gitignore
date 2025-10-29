@@ -60,5 +60,5 @@ package-lock.json
 backend/.env
 *.env.local
 
-# Sample directory (旧仕様の参考コード)
-sample/
+# Sample data files (exclude large data files)
+sample/data/timeseries/

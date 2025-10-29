@@ -102,23 +102,62 @@ with tab1:
 
                 with st.spinner("データ取得中..."):
                     try:
-                        collector = MinuteDataCollector()
-                        results = collector.collect_multiple_symbols(selected_symbols, days=days)
+                        # subprocessで実行してエンコーディング問題を回避
+                        symbols_str = ','.join(selected_symbols)
+                        cmd = [
+                            'python',
+                            'sample/data/minute_data_collector.py',
+                            '--symbols', symbols_str,
+                            '--days', str(days)
+                        ]
 
-                        st.success("✅ データ収集完了！")
+                        result = subprocess.run(
+                            cmd,
+                            capture_output=True,
+                            text=True,
+                            encoding='utf-8',
+                            errors='replace',
+                            timeout=300,
+                            cwd=project_root
+                        )
 
-                        # 結果表示
-                        st.subheader("取得結果")
-                        result_df = pd.DataFrame([
-                            {"通貨": symbol, "取得件数": count}
-                            for symbol, count in results.items()
-                        ])
-                        st.dataframe(result_df, use_container_width=True)
+                        if result.returncode == 0:
+                            st.success("✅ データ収集完了！")
+
+                            # 結果をパース（簡易版：ファイルから読み込み）
+                            storage = TimeSeriesStorage()
+                            results = {}
+                            for symbol in selected_symbols:
+                                try:
+                                    df = storage.load_price_data(symbol, '1m')
+                                    results[symbol] = len(df) if not df.empty else 0
+                                except:
+                                    results[symbol] = 0
+
+                            # 結果表示
+                            st.subheader("取得結果")
+                            result_df = pd.DataFrame([
+                                {"通貨": symbol, "取得件数": count}
+                                for symbol, count in results.items()
+                            ])
+                            st.dataframe(result_df, width=None)
+
+                            # ログ表示
+                            with st.expander("実行ログ"):
+                                st.code(result.stdout)
+                        else:
+                            st.error(f"エラーが発生しました（Exit code: {result.returncode}）")
+                            st.code(result.stderr)
 
                         st.session_state.data_collection_running = False
 
+                    except subprocess.TimeoutExpired:
+                        st.error("タイムアウト: 5分以上かかりました")
+                        st.session_state.data_collection_running = False
                     except Exception as e:
                         st.error(f"エラーが発生しました: {str(e)}")
+                        import traceback
+                        st.code(traceback.format_exc())
                         st.session_state.data_collection_running = False
 
     with col2:
@@ -218,13 +257,23 @@ with tab2:
                 if preview_symbol:
                     df = storage.load_price_data(preview_symbol, '1m')
 
-                    # 最新100件を表示
-                    st.write(f"**{preview_symbol}** 最新100件")
-                    st.line_chart(df['close'].tail(100))
+                    if not df.empty:
+                        # 最新100件を表示
+                        st.write(f"**{preview_symbol}** 最新100件")
 
-                    # 詳細データ
-                    with st.expander("詳細データを表示"):
-                        st.dataframe(df.tail(100), use_container_width=True)
+                        # データフレームをチャート用に準備
+                        chart_data = df['close'].tail(100)
+
+                        if len(chart_data) > 0:
+                            st.line_chart(chart_data, height=400)
+                        else:
+                            st.warning("表示するデータがありません")
+
+                        # 詳細データ
+                        with st.expander("詳細データを表示"):
+                            st.dataframe(df.tail(100), width=None)
+                    else:
+                        st.warning(f"{preview_symbol} のデータがありません")
 
     except Exception as e:
         st.error(f"エラー: {str(e)}")
