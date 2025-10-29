@@ -16,6 +16,7 @@ import pandas as pd
 import subprocess
 import threading
 import queue
+import altair as alt
 
 # プロジェクトルートをパスに追加
 project_root = str(Path(__file__).parent.parent.parent)
@@ -262,10 +263,24 @@ with tab2:
                         st.write(f"**{preview_symbol}** 最新100件")
 
                         # データフレームをチャート用に準備
-                        chart_data = df['close'].tail(100)
+                        chart_data = df[['close']].tail(100).reset_index()
 
                         if len(chart_data) > 0:
-                            st.line_chart(chart_data, height=400)
+                            # Y軸の範囲を最適化（最小値-1%、最大値+1%）
+                            min_price = chart_data['close'].min()
+                            max_price = chart_data['close'].max()
+                            margin = (max_price - min_price) * 0.05  # 5%のマージン
+
+                            chart = alt.Chart(chart_data).mark_line(color='#1f77b4').encode(
+                                x=alt.X('timestamp:T', title='時刻'),
+                                y=alt.Y('close:Q',
+                                       title='価格 (USDT)',
+                                       scale=alt.Scale(domain=[min_price - margin, max_price + margin]))
+                            ).properties(
+                                height=400
+                            )
+
+                            st.altair_chart(chart, use_container_width=True)
                         else:
                             st.warning("表示するデータがありません")
 
