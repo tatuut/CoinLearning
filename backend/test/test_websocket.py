@@ -44,7 +44,8 @@ async def test_websocket():
                     print(f"  Type: {data.get('type')}")
 
                     if data.get("type") == "message":
-                        text = data.get("text", "")
+                        event = data.get("event", {})
+                        text = event.get("text", "")
                         full_response += text
                         print(f"  Text: {text}")
 

@@ -3,6 +3,7 @@ import cors from 'cors';
 import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
 import { spawn } from 'child_process';
+import { randomUUID } from 'crypto';
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -20,6 +21,9 @@ const wss = new WebSocketServer({ server });
 
 // 接続管理
 const connections = new Map();
+
+// セッション使用状況管理（初回か2回目以降かを追跡）
+const usedSessions = new Set();
 
 // ヘルスチェック
 app.get('/health', (req, res) => {
@@ -107,15 +111,25 @@ async function handleClaudeQuery(ws, message) {
 
     console.log(`[Claude CLI] プロンプト: ${prompt.substring(0, 100)}...`);
 
-    // セッションIDを生成または使用
-    const sessionId = options.sessionId || `session-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    // セッションIDを生成または使用（UUID形式が必須）
+    const sessionId = options.sessionId || randomUUID();
+
+    // 初回か2回目以降かを判定
+    const isFirstUse = !usedSessions.has(sessionId);
 
     // Claude CLIコマンド構築
     const args = [
       '--print',
-      '--output-format', 'text',
-      '--session-id', sessionId
+      '--output-format', 'text'
     ];
+
+    // 初回は --session-id、2回目以降は --resume
+    if (isFirstUse) {
+      args.push('--session-id', sessionId);
+      usedSessions.add(sessionId);  // 使用済みとして記録
+    } else {
+      args.push('--resume', sessionId);
+    }
 
     // Tool権限設定（デフォルトでWebSearchを有効化）
     if (options.allowedTools) {
@@ -129,9 +143,6 @@ async function handleClaudeQuery(ws, message) {
       args.push('--allowed-tools', 'WebSearch Read Write Edit Bash Glob Grep');
     }
 
-    // プロンプトを最後に追加
-    args.push(prompt);
-
     console.log(`[Claude CLI] コマンド: claude ${args.join(' ')}`);
 
     // Claude CLIを子プロセスとして起動
@@ -141,7 +152,8 @@ async function handleClaudeQuery(ws, message) {
       stdio: ['pipe', 'pipe', 'pipe']
     });
 
-    // stdinを即座に閉じる（--printモードなので入力不要）
+    // プロンプトをstdinに書き込んで閉じる（--printモードではstdinから入力）
+    claude.stdin.write(prompt + '\n');
     claude.stdin.end();
 
     // 標準出力からテキストを受信

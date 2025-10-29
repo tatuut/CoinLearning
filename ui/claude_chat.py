@@ -15,6 +15,7 @@ import websockets
 from datetime import datetime
 from typing import List, Dict
 import threading
+import uuid
 
 # ページ設定
 st.set_page_config(
@@ -40,8 +41,12 @@ if "ws_url" not in st.session_state:
 if "connection_mode" not in st.session_state:
     st.session_state.connection_mode = "REST API"
 
+# Claude Code セッションID（会話履歴管理用）
+if "claude_session_id" not in st.session_state:
+    st.session_state.claude_session_id = str(uuid.uuid4())
+
 # WebSocket接続関数
-async def websocket_query(ws_url: str, prompt: str, placeholder):
+async def websocket_query(ws_url: str, prompt: str, placeholder, session_id: str = None):
     """WebSocketでクエリを送信し、ストリーミング応答を受信"""
     full_response = ""
 
@@ -54,11 +59,15 @@ async def websocket_query(ws_url: str, prompt: str, placeholder):
             if connected_data.get("type") != "connected":
                 return None, f"接続エラー: {connected_data}"
 
-            # クエリ送信
-            await websocket.send(json.dumps({
+            # クエリ送信（sessionIdを含む）
+            query_data = {
                 "type": "query",
                 "prompt": prompt
-            }))
+            }
+            if session_id:
+                query_data["options"] = {"sessionId": session_id}
+
+            await websocket.send(json.dumps(query_data))
 
             # ストリーミング応答を受信
             while True:
@@ -91,12 +100,12 @@ async def websocket_query(ws_url: str, prompt: str, placeholder):
     except Exception as e:
         return None, f"WebSocket接続エラー: {str(e)}"
 
-def run_websocket_query(ws_url: str, prompt: str, placeholder):
+def run_websocket_query(ws_url: str, prompt: str, placeholder, session_id: str = None):
     """同期的にWebSocketクエリを実行"""
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        result = loop.run_until_complete(websocket_query(ws_url, prompt, placeholder))
+        result = loop.run_until_complete(websocket_query(ws_url, prompt, placeholder, session_id))
         return result
     finally:
         loop.close()
@@ -168,11 +177,20 @@ with st.sidebar:
     # 履歴管理
     st.subheader("📝 履歴管理")
 
+    # セッションID表示
+    st.info(f"セッションID: {st.session_state.claude_session_id[:8]}...")
+
     # メッセージ数表示
     st.info(f"メッセージ数: {len(st.session_state.messages)}")
 
-    # 履歴クリア
-    if st.button("🗑️ 履歴をクリア", type="secondary"):
+    # 新規セッション開始
+    if st.button("🆕 新規セッション", type="primary"):
+        st.session_state.claude_session_id = str(uuid.uuid4())
+        st.session_state.messages = []
+        st.rerun()
+
+    # 履歴クリア（セッションIDは維持）
+    if st.button("🗑️ 履歴のみクリア", type="secondary"):
         st.session_state.messages = []
         st.rerun()
 
@@ -288,7 +306,12 @@ if prompt := st.chat_input("メッセージを入力..."):
             placeholder.markdown("⚡ 接続中...")
 
             try:
-                result, error = run_websocket_query(st.session_state.ws_url, prompt, placeholder)
+                result, error = run_websocket_query(
+                    st.session_state.ws_url,
+                    prompt,
+                    placeholder,
+                    st.session_state.claude_session_id
+                )
 
                 if error:
                     st.error(error)
