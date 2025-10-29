@@ -3,11 +3,9 @@
   "version": "2.0.0",
   "description": "Claude Code integration backend using Claude Plan Max subscription",
   "type": "module",
-  "main": "server.js",
+  "main": "server-interactive.js",
   "scripts": {
     "start": "node server-interactive.js",
-    "start:print": "node server-cli.js",
-    "start:sdk": "node server.js",
     "dev": "node --watch server-interactive.js"
   },
   "keywords": ["claude-code", "agent-sdk", "crypto", "trading"],
