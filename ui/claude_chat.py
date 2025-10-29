@@ -24,8 +24,8 @@ st.set_page_config(
 )
 
 # サーバー設定（デフォルト）
-DEFAULT_SERVER_URL = "http://localhost:3006"
-DEFAULT_WS_URL = "ws://localhost:3006"
+DEFAULT_SERVER_URL = "http://localhost:37281"
+DEFAULT_WS_URL = "ws://localhost:37281"
 
 # セッション状態の初期化
 if "messages" not in st.session_state:

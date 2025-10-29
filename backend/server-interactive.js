@@ -28,12 +28,8 @@ const sessions = new Map(); // sessionId -> { claude: ChildProcess, ws: WebSocke
 function createClaudeSession(ws, sessionId, options = {}) {
   console.log(`[Session ${sessionId}] 新規Claude Codeセッション作成`);
 
-  // Claude CLIコマンド構築（インタラクティブモード）
+  // Claude CLIコマンド構築（シンプルな対話モード）
   const args = [
-    '--print',
-    '--output-format', 'stream-json',
-    '--input-format', 'stream-json',
-    '--verbose',
     '--session-id', sessionId
   ];
 
@@ -54,33 +50,17 @@ function createClaudeSession(ws, sessionId, options = {}) {
     stdio: ['pipe', 'pipe', 'pipe']
   });
 
-  let buffer = '';
-
-  // 標準出力からJSONストリームを受信
+  // 標準出力からテキストを受信
   claude.stdout.on('data', (chunk) => {
-    buffer += chunk.toString();
+    const text = chunk.toString();
+    console.log(`[Session ${sessionId}] stdout:`, text);
 
-    // 改行で区切られたJSONを処理
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || ''; // 最後の不完全な行をバッファに残す
-
-    for (const line of lines) {
-      if (line.trim()) {
-        try {
-          const data = JSON.parse(line);
-
-          // クライアントにストリーミング送信
-          ws.send(JSON.stringify({
-            type: 'message',
-            event: data,
-            timestamp: new Date().toISOString()
-          }));
-
-        } catch (e) {
-          console.error(`[Session ${sessionId}] JSON parse error:`, e.message);
-        }
-      }
-    }
+    // クライアントにテキスト送信
+    ws.send(JSON.stringify({
+      type: 'message',
+      text: text,
+      timestamp: new Date().toISOString()
+    }));
   });
 
   // 標準エラー出力
@@ -190,13 +170,8 @@ wss.on('connection', (ws) => {
         const prompt = message.prompt;
         console.log(`[Session ${sessionId}] プロンプト: ${prompt.substring(0, 100)}...`);
 
-        // stream-json形式でクエリ送信
-        const query = JSON.stringify({
-          type: 'user_message',
-          content: prompt
-        }) + '\n';
-
-        claudeSession.stdin.write(query);
+        // プロンプト送信
+        claudeSession.stdin.write(prompt + '\n');
 
         ws.send(JSON.stringify({
           type: 'query_start',
