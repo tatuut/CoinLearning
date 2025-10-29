@@ -408,11 +408,31 @@ def plot_candlestick_chart(df, symbol, interval):
         row=3, col=1
     )
 
-    # レイアウト
+    # レイアウト（インタラクティブ機能強化）
     fig.update_layout(
         height=900,
         showlegend=True,
-        xaxis_rangeslider_visible=False
+        xaxis_rangeslider_visible=True,  # レンジスライダー表示
+        dragmode='pan',  # デフォルトでパン（横移動）モード
+        hovermode='x unified',  # ホバー情報を統一表示
+        modebar_add=['drawline', 'drawopenpath', 'eraseshape'],  # 描画ツール追加
+    )
+
+    # X軸設定（ズーム・パンを有効化）
+    fig.update_xaxes(
+        rangeslider=dict(visible=True, thickness=0.05),
+        rangeselector=dict(
+            buttons=list([
+                dict(count=1, label="1時間", step="hour", stepmode="backward"),
+                dict(count=6, label="6時間", step="hour", stepmode="backward"),
+                dict(count=1, label="1日", step="day", stepmode="backward"),
+                dict(count=7, label="1週間", step="day", stepmode="backward"),
+                dict(step="all", label="全期間")
+            ]),
+            bgcolor='rgba(150, 150, 150, 0.1)',
+            activecolor='rgba(100, 100, 200, 0.3)'
+        ),
+        row=1, col=1
     )
 
     fig.update_yaxes(title_text="価格 ($)", row=1, col=1)
