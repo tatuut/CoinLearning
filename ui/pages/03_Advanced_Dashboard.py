@@ -828,41 +828,93 @@ def main():
     selected_symbol = st.sidebar.selectbox("銘柄", symbols,
                                           help="分析したい仮想通貨を選択してください")
 
-    # 時間足選択
-    intervals = sorted(set([f['interval'] for f in files if f['symbol'] == selected_symbol]))
-    selected_interval = st.sidebar.selectbox("時間足", intervals,
-                                            help="1d=1日足、4h=4時間足など")
+    # 時間足選択（固定リスト）
+    available_intervals = ['1m', '5m', '15m', '1h', '4h', '1d']
+    interval_labels = {
+        '1m': '1分足',
+        '5m': '5分足',
+        '15m': '15分足',
+        '1h': '1時間足',
+        '4h': '4時間足',
+        '1d': '1日足'
+    }
+
+    selected_interval = st.sidebar.selectbox(
+        "時間足",
+        available_intervals,
+        format_func=lambda x: f"{x} ({interval_labels[x]})",
+        help="1分足データを指定の時間足に自動変換します"
+    )
+
+    # デフォルト表示期間（時間足に応じて調整）
+    default_limits = {
+        '1m': 500,   # 約8時間
+        '5m': 300,   # 約25時間
+        '15m': 200,  # 約50時間
+        '1h': 168,   # 1週間
+        '4h': 180,   # 30日
+        '1d': 100    # 100日
+    }
+
+    default_limit = default_limits.get(selected_interval, 100)
 
     # 表示期間
-    limit = st.sidebar.slider("表示期間（直近N件）", 10, 500, 100,
-                             help="チャートに表示するデータの件数を選択")
+    limit = st.sidebar.slider(
+        "表示期間（直近N件）",
+        10,
+        2000,
+        default_limit,
+        help="チャートに表示するデータの件数を選択"
+    )
 
     st.sidebar.markdown("---")
 
-    # 更新ボタン
-    if st.sidebar.button("🔄 最新データ取得", key="update_data"):
-        with st.spinner(f"{selected_symbol}の最新データを取得中..."):
-            success, message = fetch_latest_data(selected_symbol)
-            if success:
-                st.sidebar.success(message)
-                st.rerun()
-            else:
-                st.sidebar.error(message)
+    # Data Managementへの案内
+    st.sidebar.info("💡 **データ更新**: Data Managementページで1分足データを取得してください")
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("### ℹ️ 情報")
-    for f in files:
-        if f['symbol'] == selected_symbol and f['interval'] == selected_interval:
-            st.sidebar.write(f"データ数: {f['rows']:,}行")
-            st.sidebar.write(f"サイズ: {f['size_kb']}KB")
 
-    # データ読み込み
+    # データ読み込み（1分足を変換）
     storage = get_storage()
-    df = load_data(selected_symbol, selected_interval)
+    df_1m = load_data(selected_symbol, '1m')
 
-    if df.empty:
-        st.error(f"❌ {selected_symbol}_{selected_interval} のデータが読み込めません")
+    if df_1m.empty:
+        st.error(f"❌ {selected_symbol}の1分足データがありません")
+        st.info("💡 Data Managementページで1分足データを取得してください")
         return
+
+    # 時間足変換（resample）
+    if selected_interval == '1m':
+        df = df_1m
+    else:
+        # resample用の期間マッピング
+        resample_rules = {
+            '5m': '5T',
+            '15m': '15T',
+            '1h': '1H',
+            '4h': '4H',
+            '1d': '1D'
+        }
+
+        rule = resample_rules.get(selected_interval)
+        if rule:
+            df = df_1m.resample(rule).agg({
+                'open': 'first',
+                'high': 'max',
+                'low': 'min',
+                'close': 'last',
+                'volume': 'sum',
+                'quote_volume': 'sum'
+            }).dropna()
+        else:
+            df = df_1m
+
+    # データ情報表示
+    st.sidebar.write(f"元データ（1m）: {len(df_1m):,}件")
+    st.sidebar.write(f"変換後（{selected_interval}）: {len(df):,}件")
+    if selected_interval != '1m':
+        st.sidebar.caption(f"✅ 1分足から{interval_labels[selected_interval]}に変換済み")
 
     # 直近N件に制限
     df = df.tail(limit)
@@ -913,8 +965,11 @@ def main():
 
     st.markdown("---")
 
-    # 価格予測（ARIMA/GARCH）
-    show_forecast(df, selected_symbol)
+    # 価格予測（ARIMA/GARCH） - 日足のみ
+    if selected_interval == '1d':
+        show_forecast(df, selected_symbol)
+    else:
+        st.info(f"💡 **価格予測**: ARIMA/GARCH予測は日足（1d）データで利用可能です。現在の時間足: {interval_labels[selected_interval]}")
 
     st.markdown("---")
     st.caption("Powered by Streamlit | Data: Parquet Files")
