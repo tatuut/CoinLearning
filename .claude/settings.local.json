@@ -24,7 +24,8 @@
       "Bash(PORT=3007 npm start)",
       "Bash(PORT=3008 npm start)",
       "Bash(PORT=3009 npm start)",
-      "Bash(if not exist backendtest mkdir backendtest)"
+      "Bash(if not exist backendtest mkdir backendtest)",
+      "Bash(PORT=37281 npm start)"
     ],
     "deny": [],
     "ask": []

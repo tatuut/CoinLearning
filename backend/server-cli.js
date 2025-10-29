@@ -119,10 +119,14 @@ async function handleClaudeQuery(ws, message) {
 
     // Tool権限設定（デフォルトでWebSearchを有効化）
     if (options.allowedTools) {
-      args.push('--allowed-tools', ...options.allowedTools);
+      // 配列の場合はスペース区切りの文字列に変換
+      const toolsStr = Array.isArray(options.allowedTools)
+        ? options.allowedTools.join(' ')
+        : options.allowedTools;
+      args.push('--allowed-tools', toolsStr);
     } else {
-      // デフォルトでWebSearchとファイル操作を有効化
-      args.push('--allowed-tools', 'WebSearch', 'Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep');
+      // デフォルトでWebSearchとファイル操作を有効化（スペース区切りの1つの文字列）
+      args.push('--allowed-tools', 'WebSearch Read Write Edit Bash Glob Grep');
     }
 
     // プロンプトを最後に追加
