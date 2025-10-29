@@ -30,8 +30,10 @@ function createClaudeSession(ws, sessionId, options = {}) {
 
   // Claude CLIコマンド構築（インタラクティブモード）
   const args = [
+    '--print',
     '--output-format', 'stream-json',
     '--input-format', 'stream-json',
+    '--verbose',
     '--session-id', sessionId
   ];
 
