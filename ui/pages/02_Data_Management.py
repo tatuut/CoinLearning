@@ -140,7 +140,7 @@ with tab1:
                                 {"通貨": symbol, "取得件数": count}
                                 for symbol, count in results.items()
                             ])
-                            st.dataframe(result_df, width=None)
+                            st.dataframe(result_df, use_container_width=True)
 
                             # ログ表示
                             with st.expander("実行ログ"):
@@ -271,7 +271,7 @@ with tab2:
 
                         # 詳細データ
                         with st.expander("詳細データを表示"):
-                            st.dataframe(df.tail(100), width=None)
+                            st.dataframe(df.tail(100), use_container_width=True)
                     else:
                         st.warning(f"{preview_symbol} のデータがありません")
 
