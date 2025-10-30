@@ -17,13 +17,31 @@ from pathlib import Path
 from datetime import datetime
 import requests
 import time
+import subprocess
 from sample.data.timeseries_storage import TimeSeriesStorage
 from sample.config.exchange_api import MEXCAPI
 from sample.data.advanced_database import AdvancedDatabase
 from sample.analysis.forecasting import ForecastingEngine
+from sample.data.minute_data_collector import MinuteDataCollector
 
 
 # ページ設定はclaude_chat.pyで設定済みのため削除
+
+
+# 基本銘柄リスト（Binance主要銘柄 40種）
+DEFAULT_SYMBOLS = [
+    # メジャー（時価総額TOP10）
+    'BTC', 'ETH', 'BNB', 'XRP', 'ADA', 'SOL', 'DOT', 'DOGE', 'MATIC', 'SHIB',
+
+    # DeFi
+    'AVAX', 'UNI', 'LINK', 'ATOM', 'LTC', 'ETC', 'XLM', 'ALGO', 'AAVE', 'CRV',
+
+    # L2/新興
+    'ARB', 'OP', 'APT', 'SUI', 'SEI', 'IMX', 'BLUR', 'LDO', 'RNDR', 'INJ',
+
+    # GameFi/Metaverse
+    'SAND', 'MANA', 'AXS', 'GALA', 'ENJ', 'ICP', 'FIL', 'GRT', 'CHZ', 'APE'
+]
 
 
 # 用語説明の辞書
@@ -816,7 +834,7 @@ python src/tools/news_fetcher.py {symbol} --add-manual \\
 
 
 def main():
-    st.title("📊 仮想通貨データダッシュボード")
+    st.title("📊 Dashboard")
 
     # 用語集ボタン
     with st.expander("📖 用語集（わからない言葉をクリック）"):
@@ -827,24 +845,110 @@ def main():
 
     st.markdown("---")
 
+    # セッション状態の初期化
+    if 'custom_symbols' not in st.session_state:
+        st.session_state.custom_symbols = []
+
     # サイドバー
     st.sidebar.header("⚙️ 設定")
+
+    # =========================
+    # 全データ取得ボタン
+    # =========================
+    st.sidebar.markdown("### 📥 データ取得")
+
+    # 取得対象銘柄の計算
+    target_symbols = list(set(DEFAULT_SYMBOLS + st.session_state.custom_symbols))
+    st.sidebar.caption(f"対象: {len(target_symbols)}銘柄（基本{len(DEFAULT_SYMBOLS)} + カスタム{len(st.session_state.custom_symbols)}）")
+
+    if st.sidebar.button("🔄 全データ取得", type="primary", use_container_width=True,
+                         help="1分足データを一括取得（初回は全期間、2回目以降は差分のみ）"):
+        st.sidebar.info(f"⏳ {len(target_symbols)}銘柄のデータを取得中...\n\n初回は数分かかる場合があります。")
+
+        # プログレスバー
+        progress_bar = st.sidebar.progress(0)
+        status_text = st.sidebar.empty()
+
+        # プロジェクトルート
+        project_root = str(Path(__file__).parent.parent.parent)
+
+        success_count = 0
+        failed_symbols = []
+
+        for i, symbol in enumerate(target_symbols):
+            status_text.text(f"[{i+1}/{len(target_symbols)}] {symbol} 取得中...")
+
+            try:
+                # subprocess実行
+                cmd = [
+                    'python',
+                    'sample/data/minute_data_collector.py',
+                    '--symbols', symbol,
+                    '--days', '1000'  # 全期間取得
+                ]
+
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    encoding='utf-8',
+                    errors='replace',
+                    timeout=120,  # 2分タイムアウト
+                    cwd=project_root
+                )
+
+                if result.returncode == 0:
+                    success_count += 1
+                else:
+                    failed_symbols.append(symbol)
+
+            except subprocess.TimeoutExpired:
+                failed_symbols.append(f"{symbol} (timeout)")
+            except Exception as e:
+                failed_symbols.append(f"{symbol} ({str(e)})")
+
+            # プログレスバー更新
+            progress_bar.progress((i + 1) / len(target_symbols))
+
+        # 完了メッセージ
+        status_text.empty()
+        progress_bar.empty()
+
+        if success_count == len(target_symbols):
+            st.sidebar.success(f"✅ 全データ取得完了！\n\n取得銘柄: {success_count}種")
+        else:
+            st.sidebar.warning(f"⚠️ データ取得完了（一部失敗）\n\n成功: {success_count}種\n失敗: {len(failed_symbols)}種")
+            if failed_symbols:
+                with st.sidebar.expander("失敗した銘柄"):
+                    for sym in failed_symbols:
+                        st.text(sym)
+
+        st.rerun()
+
+    st.sidebar.markdown("---")
+
+    # =========================
+    # 銘柄選択
+    # =========================
+    st.sidebar.markdown("### 📊 表示設定")
 
     # 利用可能なファイル取得
     files = get_available_files()
 
-    if not files:
+    # 銘柄リスト（基本 + カスタム + 既存ファイル）
+    all_symbols = set(DEFAULT_SYMBOLS)
+    all_symbols.update(st.session_state.custom_symbols)
+
+    if files:
+        all_symbols.update([f['symbol'] for f in files])
+
+    symbols = sorted(all_symbols)
+
+    if not symbols:
         st.error("❌ Parquetファイルが見つかりません")
-        st.info("""
-        データを収集してください:
-        ```bash
-        python crypto_analyst.py BTC
-        ```
-        """)
+        st.info("💡 上の「全データ取得」ボタンをクリックしてデータを取得してください")
         return
 
-    # 銘柄選択
-    symbols = sorted(set([f['symbol'] for f in files]))
     selected_symbol = st.sidebar.selectbox("銘柄", symbols,
                                           help="分析したい仮想通貨を選択してください")
 
@@ -889,8 +993,54 @@ def main():
 
     st.sidebar.markdown("---")
 
-    # Data Managementへの案内
-    st.sidebar.info("💡 **データ更新**: Data Managementページで1分足データを取得してください")
+    # =========================
+    # カスタム銘柄管理（草コイン追加用）
+    # =========================
+    with st.sidebar.expander("⚙️ カスタム銘柄設定（草コイン追加）"):
+        st.markdown(f"**基本銘柄**: {len(DEFAULT_SYMBOLS)}種")
+
+        # カスタム銘柄リスト
+        custom_symbols = st.session_state.custom_symbols
+
+        # 追加
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            new_symbol = st.text_input(
+                "草コイン銘柄を追加",
+                placeholder="例: PEPE",
+                key="new_symbol_input",
+                help="Binance上場銘柄のみ対応"
+            )
+        with col2:
+            st.write("")  # スペース
+            st.write("")  # スペース
+            if st.button("追加", key="add_symbol"):
+                if new_symbol:
+                    symbol_upper = new_symbol.upper().strip()
+                    if symbol_upper and symbol_upper not in custom_symbols and symbol_upper not in DEFAULT_SYMBOLS:
+                        custom_symbols.append(symbol_upper)
+                        st.session_state.custom_symbols = custom_symbols
+                        st.success(f"✅ {symbol_upper} を追加しました")
+                        st.rerun()
+                    elif symbol_upper in DEFAULT_SYMBOLS:
+                        st.warning(f"⚠️ {symbol_upper} は基本銘柄に含まれています")
+                    elif symbol_upper in custom_symbols:
+                        st.warning(f"⚠️ {symbol_upper} は既に追加済みです")
+
+        # 削除
+        if custom_symbols:
+            st.markdown("**カスタム銘柄**:")
+            for symbol in custom_symbols:
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    st.text(symbol)
+                with col2:
+                    if st.button("🗑️", key=f"del_{symbol}"):
+                        custom_symbols.remove(symbol)
+                        st.session_state.custom_symbols = custom_symbols
+                        st.rerun()
+        else:
+            st.caption("カスタム銘柄なし")
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("### ℹ️ 情報")
@@ -901,7 +1051,7 @@ def main():
 
     if df_1m.empty:
         st.error(f"❌ {selected_symbol}の1分足データがありません")
-        st.info("💡 Data Managementページで1分足データを取得してください")
+        st.info("💡 左サイドバーの「全データ取得」ボタンでデータを取得してください")
         return
 
     # 時間足変換（resample）
