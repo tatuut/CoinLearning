@@ -93,7 +93,7 @@ class TimeSeriesStorage:
         df.to_parquet(filepath, compression='snappy')
 
         file_size = filepath.stat().st_size / 1024  # KB
-        print(f"✓ 保存: {filename} ({len(df)}行, {file_size:.1f}KB)")
+        print(f"[OK] 保存: {filename} ({len(df)}行, {file_size:.1f}KB)")
 
         return filepath
 
@@ -115,7 +115,7 @@ class TimeSeriesStorage:
         filepath = self.price_dir / filename
 
         if not filepath.exists():
-            print(f"✗ ファイルなし: {filename}")
+            print(f"[ERROR] ファイルなし: {filename}")
             return pd.DataFrame()
 
         df = pd.read_parquet(filepath)
@@ -431,7 +431,7 @@ if __name__ == '__main__':
         df = storage.load_price_data(symbol, '1d')
 
         if df.empty:
-            print(f"✗ {symbol}のデータがありません")
+            print(f"[ERROR] {symbol}のデータがありません")
             print("先にデータ収集してください:")
             print(f"  python data/detailed_data_collector.py {symbol} --all-intervals")
             exit(1)
@@ -486,16 +486,16 @@ if __name__ == '__main__':
 
         print("【トレンド分析】")
         if current_price > sma_20:
-            print("✓ 価格は20日移動平均の上 → 上昇トレンド")
+            print("[OK] 価格は20日移動平均の上 → 上昇トレンド")
         else:
-            print("✓ 価格は20日移動平均の下 → 下降トレンド")
+            print("[OK] 価格は20日移動平均の下 → 下降トレンド")
 
         if rsi > 70:
-            print(f"✓ RSI={rsi:.1f} → 買われすぎ")
+            print(f"[OK] RSI={rsi:.1f} → 買われすぎ")
         elif rsi < 30:
-            print(f"✓ RSI={rsi:.1f} → 売られすぎ")
+            print(f"[OK] RSI={rsi:.1f} → 売られすぎ")
         else:
-            print(f"✓ RSI={rsi:.1f} → 中立")
+            print(f"[OK] RSI={rsi:.1f} → 中立")
 
         print()
         print("="*80)
