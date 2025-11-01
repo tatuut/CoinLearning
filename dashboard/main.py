@@ -18,11 +18,11 @@ from datetime import datetime
 import requests
 import time
 import subprocess
-from sample.data.timeseries_storage import TimeSeriesStorage
-from sample.config.exchange_api import MEXCAPI
-from sample.data.advanced_database import AdvancedDatabase
-from sample.analysis.forecasting import ForecastingEngine
-from sample.data.minute_data_collector import MinuteDataCollector
+from src.data.timeseries_storage import TimeSeriesStorage
+from src.config.exchange_api import MEXCAPI
+from src.data.advanced_database import AdvancedDatabase
+from src.analysis.forecasting import ForecastingEngine
+from src.data.minute_data_collector import MinuteDataCollector
 
 
 # ページ設定はclaude_chat.pyで設定済みのため削除
@@ -870,7 +870,7 @@ def main():
         status_text = st.sidebar.empty()
 
         # プロジェクトルート
-        project_root = str(Path(__file__).parent.parent.parent)
+        project_root = str(Path(__file__).parent.parent)
 
         success_count = 0
         failed_symbols = []
@@ -882,7 +882,7 @@ def main():
                 # subprocess実行
                 cmd = [
                     'python',
-                    'sample/data/minute_data_collector.py',
+                    'src/data/minute_data_collector.py',
                     '--symbols', symbol,
                     '--days', '1000'  # 全期間取得
                 ]
