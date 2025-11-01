@@ -115,11 +115,55 @@ class TimeSeriesStorage:
         if existing_df is not None:
             df = pd.concat([existing_df, df])
             df.sort_index(inplace=True)
+            # existing_dfを明示的に削除（メモリ解放）
+            del existing_df
+            import gc
+            gc.collect()
 
-        df.to_parquet(filepath, compression='snappy')
+        # Atomic write: 一時ファイルに書き込み → 成功したらrename
+        import time
+        import gc
+        temp_filename = f"{symbol}_{interval}.tmp.{int(time.time() * 1000)}.parquet"
+        temp_filepath = self.price_dir / temp_filename
 
-        file_size = filepath.stat().st_size / 1024  # KB
-        print(f"[OK] 保存: {filename} ({len(df)}行, {file_size:.1f}KB)")
+        try:
+            # 一時ファイルに書き込み（compression無効化でテスト）
+            df.to_parquet(temp_filepath, compression=None)
+
+            # 書き込み成功を検証（読み込みテスト）
+            test_df = pd.read_parquet(temp_filepath)
+            if len(test_df) != len(df):
+                raise ValueError(f"Verification failed: expected {len(df)} rows, got {len(test_df)}")
+
+            # 検証用DataFrameを明示的に削除（ファイルハンドル解放）
+            del test_df
+            gc.collect()
+
+            # 検証成功 → 本ファイルにrename（atomic操作）
+            # Windowsでは既存ファイルがある場合は先に削除（retry付き）
+            if filepath.exists():
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
+                        filepath.unlink()
+                        break
+                    except PermissionError:
+                        if attempt < max_retries - 1:
+                            time.sleep(0.1)  # 100ms待機
+                            gc.collect()  # 強制GC
+                        else:
+                            raise
+
+            temp_filepath.rename(filepath)
+
+            file_size = filepath.stat().st_size / 1024  # KB
+            print(f"[OK] 保存: {filename} ({len(df)}行, {file_size:.1f}KB)")
+
+        except Exception as e:
+            # エラー時は一時ファイルを削除
+            if temp_filepath.exists():
+                temp_filepath.unlink()
+            raise RuntimeError(f"Failed to save {filename}: {e}")
 
         return filepath
 
