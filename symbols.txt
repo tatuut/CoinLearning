@@ -1,0 +1,49 @@
+# 草コイン取引 - 対象銘柄リスト (40銘柄)
+#
+# メジャー（時価総額TOP10）
+BTC
+ETH
+BNB
+XRP
+ADA
+SOL
+DOT
+DOGE
+MATIC
+SHIB
+
+# DeFi
+AVAX
+UNI
+LINK
+ATOM
+LTC
+ETC
+XLM
+ALGO
+AAVE
+CRV
+
+# L2/新興
+ARB
+OP
+APT
+SUI
+SEI
+IMX
+BLUR
+LDO
+RNDR
+INJ
+
+# GameFi/Metaverse
+SAND
+MANA
+AXS
+GALA
+ENJ
+ICP
+FIL
+GRT
+CHZ
+APE

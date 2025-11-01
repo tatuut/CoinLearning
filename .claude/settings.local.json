@@ -25,7 +25,14 @@
       "Bash(PORT=3008 npm start)",
       "Bash(PORT=3009 npm start)",
       "Bash(if not exist backendtest mkdir backendtest)",
-      "Bash(PORT=37281 npm start)"
+      "Bash(PORT=37281 npm start)",
+      "Bash(taskkill:*)",
+      "Bash(git mv:*)",
+      "Bash(streamlit run:*)",
+      "Bash(dir:*)",
+      "Bash(cmd /c \"dir sample\\data\\timeseries\\prices\\*_1m.parquet /O:-D\")",
+      "Read(//c/c/**)",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": []
