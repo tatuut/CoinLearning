@@ -69,10 +69,16 @@ class TimeSeriesStorage:
                 if not existing_df.empty:
                     last_timestamp = existing_df.index[-1]
             except Exception as e:
-                # 破損ファイルを削除
-                print(f"[WARNING] Corrupted file detected, removing: {filename}")
-                filepath.unlink()
+                # 破損ファイルを検出（削除は後で）
+                print(f"[WARNING] Corrupted file detected, will recreate: {filename}")
                 existing_df = None
+                # ファイルを新規作成モードにするため、filepathを一時的にリネーム
+                import time
+                backup_path = filepath.with_suffix(f'.corrupted.{int(time.time())}')
+                try:
+                    filepath.rename(backup_path)
+                except:
+                    pass  # リネーム失敗してもOK（新規データで上書きする）
 
         # DataFrameに変換
         df = pd.DataFrame(data)
