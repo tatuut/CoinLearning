@@ -42,7 +42,7 @@ class TimeSeriesStorage:
 
     def save_price_data(self, symbol: str, interval: str, data: list):
         """
-        価格データをParquet形式で保存
+        価格データをParquet形式で保存（高速化版）
 
         Args:
             symbol: 銘柄シンボル
@@ -55,6 +55,17 @@ class TimeSeriesStorage:
         """
         if not data:
             return
+
+        # Parquetで保存（圧縮あり）
+        filename = f"{symbol}_{interval}.parquet"
+        filepath = self.price_dir / filename
+
+        # 既存データがあれば最終タイムスタンプを取得
+        last_timestamp = None
+        if filepath.exists():
+            existing_df = pd.read_parquet(filepath)
+            if not existing_df.empty:
+                last_timestamp = existing_df.index[-1]
 
         # DataFrameに変換
         df = pd.DataFrame(data)
@@ -71,6 +82,14 @@ class TimeSeriesStorage:
             df.set_index('timestamp', inplace=True)
             df.sort_index(inplace=True)
 
+        # 新規データのみをフィルタ（既存データと重複を除外）
+        if last_timestamp is not None:
+            df = df[df.index > last_timestamp]
+
+            # 新規データがなければスキップ
+            if df.empty:
+                return filepath
+
         # 数値型を最適化（float64 → float32で容量半分）
         for col in ['open', 'high', 'low', 'close', 'volume', 'quote_volume']:
             if col in df.columns:
@@ -79,15 +98,9 @@ class TimeSeriesStorage:
         # 重複を削除
         df = df[~df.index.duplicated(keep='last')]
 
-        # Parquetで保存（圧縮あり）
-        filename = f"{symbol}_{interval}.parquet"
-        filepath = self.price_dir / filename
-
-        # 既存データがあれば結合
+        # 既存データと結合
         if filepath.exists():
-            existing_df = pd.read_parquet(filepath)
             df = pd.concat([existing_df, df])
-            df = df[~df.index.duplicated(keep='last')]
             df.sort_index(inplace=True)
 
         df.to_parquet(filepath, compression='snappy')
