@@ -883,8 +883,8 @@ def main():
                 cmd = [
                     'python',
                     'src/data/minute_data_collector.py',
-                    '--symbols', symbol,
-                    '--days', '1000'  # 全期間取得
+                    '--symbols', symbol
+                    # --daysを指定しない場合、デフォルト3000日（全期間）を取得
                 ]
 
                 result = subprocess.run(
