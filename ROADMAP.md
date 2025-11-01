@@ -1,314 +1,270 @@
 # 🗺️ Grass Coin Trader プロジェクトロードマップ
 
-**最終更新**: 2025-10-29
+**最終更新**: 2025-11-01
 
-このプロジェクトは4段階で完成を目指します。
+このプロジェクトの開発フェーズと進捗状況を記載します。
 
 ---
 
 ## 🎯 全体の流れ
 
 ```
-⑴ Claude Code統合
+✅ Phase 1: データ収集基盤構築
    ↓
-⑵ 数学的分析機能 + 教材
+✅ Phase 2: ダッシュボード統合
    ↓
-⑶ ポートフォリオ理論教材
+🔄 Phase 3: Claude Code統合（進行中）
    ↓
-⑷ 全機能テスト・完成
+📝 Phase 4: 高度な分析機能
+   ↓
+📝 Phase 5: 実践・教材完成
 ```
 
 ---
 
-## ⑴ Claude Code統合【優先度：最高】
-
-### 目標
-**Streamlit UIから別のClaude Codeインスタンスと対話できるようにする**
-
-### なぜ必要？
-- ニュース分析を自動化したい
-- WebSearchで最新情報を取得したい
-- 対話的に分析を進めたい
-- API料金を気にせず使いたい（Max 20x Plan利用）
+## ✅ Phase 1: データ収集基盤構築【完了】
 
 ### 実装内容
 
+- ✅ 1分足データ収集システム
+  - Binance API連携（認証不要）
+  - 差分更新機能（既存データスキップ）
+  - 3000日分の履歴取得
+
+- ✅ symbols.txt銘柄管理
+  - 40銘柄を一元管理
+  - コメント行対応
+
+- ✅ Parquetストレージ
+  - 軽量データ保存（89%圧縮）
+  - pandas直接対応
+  - DatetimeIndex対応
+
+- ✅ リアルタイム出力
+  - Windowsでのライン・バッファリング
+  - 進捗表示機能
+
+### 成果物
+
+- `src/data/minute_data_collector.py` - データ収集スクリプト
+- `src/data/timeseries_storage.py` - Parquetストレージ
+- `symbols.txt` - 40銘柄リスト
+
+---
+
+## ✅ Phase 2: ダッシュボード統合【完了】
+
+### 実装内容
+
+- ✅ Streamlit Webダッシュボード
+  - ローソク足チャート（Plotly）
+  - テクニカル指標表示（RSI, MACD, Bollinger Bands）
+  - 移動平均線（SMA20, SMA50, EMA20）
+
+- ✅ 時間足の自動変換
+  - 1分足→任意時間足resample
+  - 1m, 5m, 15m, 1h, 4h, 1d対応
+
+- ✅ 分析ツール自動検出
+  - src/analysis/配下のモジュール自動検出
+  - カテゴリ別表示（予測/統計/ニュース/指標）
+  - 動的importlib使用
+
+- ✅ データ一括取得UI
+  - ダッシュボードから全銘柄取得
+  - プログレスバー表示
+
+### 成果物
+
+- `dashboard/main.py` - 統合ダッシュボード
+- `docs/ANALYSIS_METHODS.md` - 分析手法ガイド
+
+---
+
+## 🔄 Phase 3: Claude Code統合【進行中】
+
+### 目標
+
+**Streamlit UIから別のClaude Codeインスタンスと対話できるようにする**
+
+### 現状
+
+- ✅ WebSocketサーバー実装（Node.js）
+- ✅ Streamlit Chat UI
+- ⏸️ セッション管理（一時停止中）
+
+### 実装予定
+
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    ユーザー（あなた）                      │
-└─────────────────┬───────────────────────────────────────┘
-                  │
-                  ↓
-┌─────────────────────────────────────────────────────────┐
-│              Streamlit UI (claude_chat.py)              │
-│              - チャット形式の対話                          │
-│              - 履歴表示・保存                             │
-└─────────────────┬───────────────────────────────────────┘
-                  │ WebSocket接続
-                  ↓
-┌─────────────────────────────────────────────────────────┐
-│         Node.js サーバー (server-cli.js)                 │
-│         - WebSocket受付                                  │
-│         - Claude CLIプロセス起動・管理                    │
-└─────────────────┬───────────────────────────────────────┘
-                  │ spawn('claude')
-                  ↓
-┌─────────────────────────────────────────────────────────┐
-│              Claude Code CLI (別プロセス)                 │
-│              - セッション管理（--session-id）             │
-│              - WebSearch機能（--allowed-tools WebSearch）│
-│              - ファイル操作（Read, Write, Edit, Bash等）  │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────┐
+│     Streamlit UI (claude_chat.py)       │
+│     - チャット形式の対話                   │
+└─────────────┬───────────────────────────┘
+              │ WebSocket接続
+              ↓
+┌─────────────────────────────────────────┐
+│   Node.js サーバー (server-cli.js)       │
+│   - WebSocket受付                        │
+│   - Claude CLIプロセス起動・管理          │
+└─────────────┬───────────────────────────┘
+              │ spawn('claude')
+              ↓
+┌─────────────────────────────────────────┐
+│     Claude Code CLI (別プロセス)         │
+│     - WebSearch機能                      │
+│     - ファイル操作（Read, Write, Edit）  │
+└─────────────────────────────────────────┘
 ```
 
 ### タスク
-- [x] ~~`server-interactive.js`で実装試み~~（失敗）
-- [ ] `server-cli.js`をgit履歴から復元
-- [ ] `--session-id`でセッション管理を実装
-- [ ] `--allowed-tools WebSearch`でWebSearch有効化
-- [ ] Streamlit UIから動作確認
 
-### 成果物
-- ✅ 動作する`backend/server-cli.js`
-- ✅ WebSocket経由で対話可能
-- ✅ セッション履歴保持
-- ✅ StreamlitからClaude Codeと対話できるUI
+- [ ] セッション管理の実装
+- [ ] WebSearch有効化
+- [ ] ニュース分析の自動化
+
+### 成果物（予定）
+
+- ✅ `claude-chat/backend/server-cli.js`
+- ✅ `claude-chat/streamlit/claude_chat.py`
+- ⏸️ セッション履歴管理
 
 ---
 
-## ⑵ 数学的分析機能の実装 + 教材作成【優先度：高】
+## 📝 Phase 4: 高度な分析機能【未着手】
 
-### 目標
-**高度な分析機能を実装し、使い方を教材にまとめる**
+### 実装予定
 
-### 現状
-✅ 基本的な技術指標は実装済み
-- RSI, MACD, Bollinger Bands
-- 移動平均、ATR, OBV, Stochastic
-- 相関分析、ベータ分析
+#### A. ARIMA/GARCH予測の改善
 
-❌ 予測・機械学習は未実装
+**現状**: 基本実装済み（forecasting.py）
 
-### 実装する機能
+**改善内容**:
+- モデル自動選択（AIC/BIC基準）
+- 複数モデルのアンサンブル
+- 予測精度の可視化
 
-#### A. ARIMA/GARCHモデル（時系列予測）
+#### B. GRU深層学習予測の実装
 
-```
-過去の価格データ
-    ↓
-┌────────────────────┐
-│   ARIMAモデル       │  価格のトレンド・季節性を予測
-└────────────────────┘
-    ↓
-┌────────────────────┐
-│   GARCHモデル       │  ボラティリティ（変動性）を予測
-└────────────────────┘
-    ↓
-将来の価格レンジ予測
-```
+**現状**: gru_forecaster.py実装済み
 
-**実装先**: `sample/analysis/forecasting.py` を拡張
+**改善内容**:
+- 学習データ拡張
+- ハイパーパラメータ調整
+- リアルタイム予測API
 
-#### B. 高度な統計分析
+#### C. 高度な統計分析
 
-- 共分散行列の計算
+**新規実装**:
 - VaR（バリュー・アット・リスク）計算
 - CVaR（条件付きVaR）
 - ドローダウン分析
+- 共分散行列の可視化
 
-**実装先**: `sample/analysis/risk_metrics.py`（新規）
+**実装先**: `src/analysis/risk_metrics.py`（新規）
 
-#### C. 機械学習モデル
+#### D. ポートフォリオ最適化
 
-```
-特徴量エンジニアリング
-    ↓ (価格、RSI、MACD、出来高、ニュースセンチメント等)
-┌────────────────────┐
-│   LSTMモデル        │  時系列パターン学習
-│   または            │
-│   XGBoostモデル     │  非線形パターン学習
-└────────────────────┘
-    ↓
-価格方向性の予測
-```
-
-**実装先**: `sample/analysis/ml_predictor.py`（新規）
-
-### 作成する教材
-
-| ファイル名 | 内容 | 対象読者 |
-|-----------|------|----------|
-| `docs/guides/arima_garch_guide.md` | ARIMA/GARCHの理論と実装 | 中級者 |
-| `docs/guides/statistics_advanced.md` | 高度な統計分析（VaR等） | 中級者 |
-| `docs/guides/machine_learning_crypto.md` | 機械学習による予測 | 中級者 |
-| `curriculum/stories/07_forecasting_story.md` | 予測の歴史と実装（Chapter形式） | 初心者〜中級者 |
-
-### 成果物
-- ✅ 予測機能付き分析ツール
-- ✅ 各機能の使い方がわかる教材
-
----
-
-## ⑶ ポートフォリオ理論の教材作成【優先度：中】
-
-### 目標
-**ポートフォリオ管理の知識を教材にまとめる**
-
-### なぜ必要？
-- 複数銘柄をどう組み合わせるか
-- リスク分散の数学的理解
-- 効率的な資産配分
-
-### 作成する教材
-
-#### Chapter形式（ストーリー教材）
-
-**`curriculum/stories/07_portfolio_theory.md`**
-
-構成案：
-```
-Scene 1: マーコウィッツの悩み（1952年）
-         → 分散投資の数学的定式化
-
-Scene 2: 効率的フロンティアの発見
-         → リスク・リターンの最適バランス
-
-Scene 3: シャープレシオの誕生
-         → リスク調整後リターンの測定
-
-Scene 4-12: 実装・応用・実践
-```
-
-#### 実装ガイド
-
-**`docs/guides/portfolio_optimization.md`**
-
-内容：
-- 共分散行列の計算
-- 効率的フロンティアの描画
-- ポートフォリオ最適化の実装（Python）
-- 実践的なアセットアロケーション
-
-### コード実装
-
-**`sample/analysis/portfolio_optimizer.py`**（新規作成）
-
-機能：
+**新規実装**:
 - 複数銘柄の最適配分計算
-- リスク・リターンのシミュレーション
-- 効率的フロンティアの可視化
+- 効率的フロンティアの描画
+- シャープレシオ最大化
 
-### 成果物
-- ✅ ポートフォリオ理論の教材（Chapter形式）
-- ✅ 実践的な最適化ガイド
-- ✅ 実装コード
+**実装先**: `src/analysis/portfolio_optimizer.py`（新規）
+
+### 成果物（予定）
+
+- `src/analysis/risk_metrics.py`
+- `src/analysis/portfolio_optimizer.py`
+- `docs/guides/advanced_analysis.md`
 
 ---
 
-## ⑷ 全機能の単体テスト・動作確認【優先度：最高】
+## 📝 Phase 5: 実践・教材完成【未着手】
 
 ### 目標
-**各機能が単体で正しく動作することを確認**
 
-### テスト項目一覧
+**実践と教材の両立で100円→1000円を達成できるシステムに**
 
-```
-✅ = 動作確認済み
-❌ = 未確認
-```
+### 実装予定
 
-#### コア機能
-- ✅ データ収集・保存（Parquet形式）
-  - `python crypto_analyst.py BTC`
+#### A. 実践機能
 
-- ✅ 技術指標計算
-  - `python data/timeseries_storage.py --test BTC`
+- [ ] バックテスト機能
+  - 過去データでの戦略検証
+  - リターン・リスクの可視化
 
-- ✅ 相関分析・ベータ分析
-  - `python analysis/correlation_analyzer.py --market BTC ETH`
+- [ ] アラート機能
+  - RSI閾値超え通知
+  - 価格変動アラート
 
-- ✅ Streamlitダッシュボード
-  - `streamlit run src/tools/parquet_dashboard.py`
+#### B. 教材作成
 
-#### 新機能（⑴⑵⑶で実装）
-- ❌ Claude Code統合
-  - `streamlit run ui/claude_chat.py`
+| 教材 | タイトル | 状態 |
+|------|---------|------|
+| Week 2 | 110円→150円（テクニカル） | 📝 未作成 |
+| Week 3 | 150円→300円（統合分析） | 📝 未作成 |
+| Week 4 | 300円→1000円（システム化） | 📝 未作成 |
 
-- ❌ ARIMA/GARCH予測
-  - `python sample/analysis/forecasting.py BTC --forecast 7`
+### 成果物（予定）
 
-- ❌ 機械学習モデル
-  - `python sample/analysis/ml_predictor.py BTC --train`
-
-- ❌ ポートフォリオ最適化
-  - `python sample/analysis/portfolio_optimizer.py --symbols BTC ETH XRP`
-
-### テストドキュメント作成
-
-**`docs/tests/integration_tests.md`**
-
-内容：
-- 各機能のテスト手順
-- 期待される結果
-- トラブルシューティング
-
-### 成果物
-- ✅ テストスクリプト集
-- ✅ テスト手順書
-- ✅ 各機能の動作確認レポート
-- ✅ すべての機能が単体で動作することの保証
+- バックテスト機能
+- アラート機能
+- Week 2-4教材
 
 ---
 
 ## 📊 進捗管理
 
-| フェーズ | 状態 | 完了予定 |
-|---------|------|----------|
-| ⑴ Claude Code統合 | 🔄 作業中 | 最優先 |
-| ⑵ 数学的分析 + 教材 | 📝 未着手 | ⑴完了後 |
-| ⑶ ポートフォリオ教材 | 📝 未着手 | ⑵完了後 |
-| ⑷ 全機能テスト | 📝 未着手 | ⑶完了後 |
+| フェーズ | 状態 | 完了率 | 備考 |
+|---------|------|--------|------|
+| Phase 1: データ収集基盤 | ✅ 完了 | 100% | 40銘柄・3000日分 |
+| Phase 2: ダッシュボード | ✅ 完了 | 100% | 自動検出機能実装済み |
+| Phase 3: Claude統合 | 🔄 進行中 | 50% | UI完成、セッション管理保留 |
+| Phase 4: 高度分析 | 📝 未着手 | 0% | Phase 3完了後 |
+| Phase 5: 実践・教材 | 📝 未着手 | 0% | Phase 4完了後 |
 
 ---
 
-## 🎯 最終ゴール
+## 🎯 現在の優先順位
 
-### システムとして
-- ✅ データ収集から分析、予測まで一貫したシステム
-- ✅ Claude Codeとの対話で深い洞察を得られる
-- ✅ すべての機能が単体でテスト済み
+### 最優先
 
-### 教材として
-- ✅ Week 1-4：実践ガイド（100円→1000円）
-- ✅ Chapter 1-7：技術ストーリー（発明の物語）
-- ✅ 実装ガイド：各機能の詳細解説
+1. **データ収集完了の確認**
+   - 40銘柄すべて取得完了しているか
+   - データの完全性チェック
 
-### ユーザー体験
-```
-朝：streamlit run src/tools/parquet_dashboard.py
-    → 保有銘柄の状況確認
+2. **カリキュラム学習**
+   - 実装済み機能の学習
+   - 数学的分析手法の理解
 
-昼：python crypto_analyst.py SHIB --timeline
-    → 新規購入候補の調査
+### 優先度: 高
 
-夕：streamlit run ui/claude_chat.py
-    → Claude Codeと対話しながら判断
-    「このRSI値をどう見る？」
-    「ニュースの影響は？」
+3. **Claude Code統合の完成**
+   - セッション管理の実装
+   - ニュース分析の自動化
 
-夜：python sample/analysis/portfolio_optimizer.py
-    → ポートフォリオの最適化
-```
+### 優先度: 中
+
+4. **高度な分析機能の追加**
+   - リスク指標（VaR, CVaR）
+   - ポートフォリオ最適化
+
+### 優先度: 低
+
+5. **実践機能の追加**
+   - バックテスト
+   - アラート
 
 ---
 
 ## 🔗 関連ドキュメント
 
-- [DOCS_INDEX.md](docs/DOCS_INDEX.md) - 全ドキュメント索引
 - [README.md](README.md) - プロジェクト概要
-- [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) - ディレクトリ構造
+- [docs/ANALYSIS_METHODS.md](docs/ANALYSIS_METHODS.md) - 分析手法ガイド
+- [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) - セットアップ・使い方
+- [docs/DOCS_INDEX.md](docs/DOCS_INDEX.md) - 全ドキュメント索引
 
 ---
 
-**最終更新**: 2025-10-29
+**最終更新**: 2025-11-01
 **作成者**: Claude Code（with tatut）
