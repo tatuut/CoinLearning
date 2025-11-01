@@ -18,6 +18,8 @@ from datetime import datetime
 import requests
 import time
 import subprocess
+import importlib
+import inspect
 from src.data.timeseries_storage import TimeSeriesStorage
 from src.config.exchange_api import MEXCAPI
 from src.data.advanced_database import AdvancedDatabase
@@ -177,6 +179,76 @@ GLOSSARY = {
 def get_storage():
     """TimeSeriesStorageインスタンス取得（キャッシュ）"""
     return TimeSeriesStorage()
+
+
+@st.cache_data
+def discover_analysis_tools():
+    """
+    src/analysis/配下の分析ツールを自動検出
+
+    Returns:
+        dict: {
+            'module_name': {
+                'path': 'src/analysis/xxx.py',
+                'classes': [...],
+                'description': '...'
+            }
+        }
+    """
+    tools = {}
+
+    # src/analysis/配下のPythonファイルを走査
+    analysis_dir = Path(__file__).parent.parent / 'src' / 'analysis'
+
+    if not analysis_dir.exists():
+        return tools
+
+    # メインディレクトリとindicatorsサブディレクトリ
+    search_paths = [
+        (analysis_dir, 'src.analysis'),
+        (analysis_dir / 'indicators', 'src.analysis.indicators')
+    ]
+
+    for dir_path, module_prefix in search_paths:
+        if not dir_path.exists():
+            continue
+
+        for py_file in dir_path.glob('*.py'):
+            # __init__.pyや内部モジュールはスキップ
+            if py_file.stem.startswith('_'):
+                continue
+
+            module_name = f"{module_prefix}.{py_file.stem}"
+
+            try:
+                # モジュールをインポート
+                module = importlib.import_module(module_name)
+
+                # クラスを検出
+                classes = []
+                for name, obj in inspect.getmembers(module, inspect.isclass):
+                    # 外部ライブラリのクラスを除外
+                    if obj.__module__ == module_name:
+                        classes.append({
+                            'name': name,
+                            'docstring': inspect.getdoc(obj) or '説明なし'
+                        })
+
+                if classes:
+                    # モジュールのdocstringから説明を取得
+                    module_doc = inspect.getdoc(module) or py_file.stem
+
+                    tools[py_file.stem] = {
+                        'path': str(py_file.relative_to(analysis_dir.parent)),
+                        'module': module_name,
+                        'classes': classes,
+                        'description': module_doc.split('\n')[0] if module_doc else py_file.stem
+                    }
+            except Exception as e:
+                # インポートエラーは無視（依存関係の問題など）
+                pass
+
+    return tools
 
 
 def get_available_files():
@@ -757,6 +829,90 @@ Phase 2で実装したバックグラウンド実行基盤のデモです。
             st.session_state["job_running"] = False
 
 
+def show_advanced_analysis_tools(symbol, df):
+    """
+    高度な分析ツール（自動検出）
+
+    Args:
+        symbol: 銘柄
+        df: 価格データ
+    """
+    st.subheader("🔧 高度な分析ツール")
+
+    with st.expander("💡 分析ツールについて"):
+        st.markdown("""
+### 自動検出された分析ツール
+
+`src/analysis/`配下の分析ツールを自動で検出して表示しています。
+
+**利用可能な分析手法**:
+- **相関分析**: 複数銘柄の価格相関を分析
+- **GRU予測**: 深層学習による高精度価格予測（ARIMA比24倍精度向上）
+- **テクニカル指標**: ATR, OBV, ストキャスティクス等
+- **ニュース分析**: センチメント分析・スコアリング
+
+詳細は `docs/ANALYSIS_METHODS.md` を参照してください。
+        """)
+
+    # ツール自動検出
+    tools = discover_analysis_tools()
+
+    if not tools:
+        st.warning("⚠️ 分析ツールが検出されませんでした")
+        return
+
+    # ツールリスト表示
+    st.markdown("### 📚 検出された分析モジュール")
+
+    # カテゴリ別に整理
+    categories = {
+        '予測': ['forecasting', 'gru_forecaster'],
+        '統計分析': ['correlation_analyzer'],
+        'ニュース': ['news_collector', 'scoring_engine', 'intelligence_system'],
+        'テクニカル指標': ['atr', 'obv', 'stochastic']
+    }
+
+    for category, module_names in categories.items():
+        # カテゴリに該当するツールを抽出
+        category_tools = {k: v for k, v in tools.items() if k in module_names}
+
+        if category_tools:
+            st.markdown(f"#### {category}")
+
+            for module_stem, info in category_tools.items():
+                with st.expander(f"📦 {module_stem} - {info['description'][:50]}..."):
+                    st.markdown(f"**パス**: `{info['path']}`")
+                    st.markdown(f"**説明**: {info['description']}")
+
+                    st.markdown("**提供クラス**:")
+                    for cls in info['classes']:
+                        st.markdown(f"- `{cls['name']}`: {cls['docstring'][:100]}...")
+
+                    # 使用例を表示
+                    st.markdown("**使用例**:")
+                    st.code(f"""
+from {info['module']} import {info['classes'][0]['name'] if info['classes'] else 'ClassName'}
+
+# インスタンス作成
+analyzer = {info['classes'][0]['name'] if info['classes'] else 'ClassName'}()
+
+# 詳細は docs/ANALYSIS_METHODS.md を参照
+                    """, language='python')
+
+    # その他のツール
+    other_tools = {k: v for k, v in tools.items()
+                   if k not in [name for names in categories.values() for name in names]}
+
+    if other_tools:
+        st.markdown("#### その他")
+        for module_stem, info in other_tools.items():
+            with st.expander(f"📦 {module_stem}"):
+                st.markdown(f"**パス**: `{info['path']}`")
+                st.markdown(f"**説明**: {info['description']}")
+                for cls in info['classes']:
+                    st.markdown(f"- `{cls['name']}`")
+
+
 def show_news(symbol):
     """ニュース一覧表示"""
     col1, col2 = st.columns([3, 1])
@@ -1140,6 +1296,11 @@ def main():
         show_forecast(df, selected_symbol)
     else:
         st.info(f"💡 **価格予測**: ARIMA/GARCH予測は日足（1d）データで利用可能です。現在の時間足: {interval_labels[selected_interval]}")
+
+    st.markdown("---")
+
+    # 高度な分析ツール（自動検出）
+    show_advanced_analysis_tools(selected_symbol, df)
 
     st.markdown("---")
     st.caption("Powered by Streamlit | Data: Parquet Files")
