@@ -362,8 +362,8 @@ def main():
     parser.add_argument('--symbols-file', type=str, default='symbols.txt',
                        help='銘柄リストファイル（デフォルト: symbols.txt）')
 
-    parser.add_argument('--days', type=int, default=None,
-                       help='初回取得日数（デフォルト: 30日）。差分更新の場合は無視される')
+    parser.add_argument('--days', type=int, default=3000,
+                       help='初回取得日数（デフォルト: 3000日 ≈ 8年）。差分更新の場合は無視される')
 
     parser.add_argument('--summary', action='store_true',
                        help='保存済みデータのサマリーを表示')
