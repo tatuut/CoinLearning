@@ -62,10 +62,17 @@ class TimeSeriesStorage:
 
         # 既存データがあれば最終タイムスタンプを取得
         last_timestamp = None
+        existing_df = None
         if filepath.exists():
-            existing_df = pd.read_parquet(filepath)
-            if not existing_df.empty:
-                last_timestamp = existing_df.index[-1]
+            try:
+                existing_df = pd.read_parquet(filepath)
+                if not existing_df.empty:
+                    last_timestamp = existing_df.index[-1]
+            except Exception as e:
+                # 破損ファイルを削除
+                print(f"[WARNING] Corrupted file detected, removing: {filename}")
+                filepath.unlink()
+                existing_df = None
 
         # DataFrameに変換
         df = pd.DataFrame(data)
@@ -99,7 +106,7 @@ class TimeSeriesStorage:
         df = df[~df.index.duplicated(keep='last')]
 
         # 既存データと結合
-        if filepath.exists():
+        if existing_df is not None:
             df = pd.concat([existing_df, df])
             df.sort_index(inplace=True)
 
