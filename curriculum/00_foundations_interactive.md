@@ -621,7 +621,7 @@ Q: 1000円で買う？
 👉 [Week 1: 初めての購入](./01_first_purchase.md)
 
 **不安な方は**:
-👉 [Week 0の品質基準](./WEEK0_QUALITY_STANDARD.md)で自己テスト
+👉 [Week 0の品質基準](../docs/curriculum/WEEK0_QUALITY_STANDARD.md)で自己テスト
 
 ---
 
