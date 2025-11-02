@@ -62,3 +62,4 @@ backend/.env
 
 # Sample data files (exclude large data files)
 sample/data/timeseries/
+curriculum/backup/
