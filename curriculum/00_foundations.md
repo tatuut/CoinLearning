@@ -426,10 +426,13 @@ Streamlit UIで以下を確認:
 
 **すべてチェックできたら、Week 1（初めての購入）へ進みましょう！**
 
+**⚠️ 不安な方は**: [Week 0の品質基準](./WEEK0_QUALITY_STANDARD.md)で自己テストしてください
+
 ---
 
 ## 📚 参考資料
 
+- **[Week 0の品質基準](./WEEK0_QUALITY_STANDARD.md)** - どこまで理解すれば合格か、詳細な自己テスト
 - [docs/ANALYSIS_METHODS.md](../docs/ANALYSIS_METHODS.md) - 詳細な数式と実装
 - [Streamlitダッシュボード](../dashboard/main.py) - 実際のチャート
 
