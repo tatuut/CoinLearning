@@ -315,8 +315,8 @@ MEXCで表示可能な指標一覧です。必要に応じて学習します。
 ## 📚 関連ドキュメント
 
 - **[LEARNING_PATH.md](./LEARNING_PATH.md)** - 学習全体の地図（3階層構造）
-- **[00_foundations.md](./00_foundations.md)** - Week 0: 基礎知識
-- **[01_first_purchase/](./01_first_purchase/)** - Week 1: 初めての購入
+- **[textbook/00_foundations.md](./textbook/00_foundations.md)** - Week 0: 基礎知識
+- **[textbook/01_first_purchase/](./textbook/01_first_purchase/)** - Week 1: 初めての購入
 
 ---
 

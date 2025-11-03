@@ -16,22 +16,22 @@
 
 このマニュアルは、以下のドキュメントと連携して使用します：
 
-### 📚 教材管理（textbook/）
+### 📚 教材管理（curriculum/）
 
-教材の実体は `textbook/` ディレクトリに格納されています：
+教材は `curriculum/` ディレクトリに格納されています：
 
-- **[../../textbook/LEARNING_PATH.md](../../textbook/LEARNING_PATH.md)** - 学習全体の地図
+- **[../../curriculum/LEARNING_PATH.md](../../curriculum/LEARNING_PATH.md)** - 学習全体の地図
   - Level 0: 抽象的大目標「楽して生きる」
   - Level 1: 具体的目標「100円 → 10000円の流れ」
   - Level 2-A: 概念チェックリスト（CONCEPT_TREEへのリンク）
   - Level 2-B: Week形式の順番
 
-- **[../../textbook/CONCEPT_TREE.md](../../textbook/CONCEPT_TREE.md)** - 概念ツリー（チェックリスト）
+- **[../../curriculum/CONCEPT_TREE.md](../../curriculum/CONCEPT_TREE.md)** - 概念ツリー（チェックリスト）
   - Tree構造で概念を整理
   - チェックボックスで進捗管理
   - 順不同（動的に追加可能）
 
-- **[../../textbook/](../../textbook/)** - 教材本体
+- **[../../curriculum/textbook/](../../curriculum/textbook/)** - 教材本体
   - `00_foundations.md` - Week 0: 基礎知識
   - `01_first_purchase/` - Week 1: 初めての購入
   - （Week 2以降は動的に追加）
@@ -47,21 +47,21 @@
               │
               ↓
 ┌─────────────────────────────────────────┐
-│  textbook/LEARNING_PATH.md              │
+│  curriculum/LEARNING_PATH.md            │
 │  - 学習の「進め方」を定義                 │
 │  - 全体構造とWeek管理                    │
 └─────────────┬───────────────────────────┘
               │
               ↓
 ┌─────────────────────────────────────────┐
-│  textbook/CONCEPT_TREE.md               │
+│  curriculum/CONCEPT_TREE.md             │
 │  - 概念の「習得状況」を管理              │
 │  - チェックリストで進捗確認              │
 └─────────────┬───────────────────────────┘
               │
               ↓
 ┌─────────────────────────────────────────┐
-│  textbook/XX_topic/                     │
+│  curriculum/textbook/XX_topic/          │
 │  - 実際の教材コンテンツ                  │
 │  - このマニュアルに従って作成            │
 └─────────────────────────────────────────┘

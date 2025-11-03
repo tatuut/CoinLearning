@@ -9,15 +9,14 @@
 ## 📋 このディレクトリの構造
 
 ```
-textbook/
+curriculum/
+├── README.md                 # カリキュラム全体のマスターファイル
 ├── LEARNING_PATH.md          # ← このファイル（学習全体の地図）
 ├── CONCEPT_TREE.md           # 概念チェックリスト（Tree構造、順不同OK）
-├── 00_foundations.md         # Week 0: 基礎知識（RSI, MACD, BOLL）
-└── 01_first_purchase/        # Week 1: 初めての購入（100円チャレンジ）
-    ├── plan.md
-    ├── thought/
-    ├── draft.md
-    └── document.md
+└── textbook/                 # 教材本体
+    ├── README.md             # 教材一覧
+    ├── 00_foundations.md     # Week 0: 基礎知識
+    └── 01_first_purchase/    # Week 1: 初めての購入
 ```
 
 ---
@@ -80,7 +79,7 @@ textbook/
 ## 🎯 Level 2-B: Week形式の学習順序
 
 ### ✅ Week 0: 基礎知識（完了）
-**ファイル**: [00_foundations.md](./00_foundations.md)
+**ファイル**: [textbook/00_foundations.md](./textbook/00_foundations.md)
 
 **学んだこと**:
 - ローソク足の読み方
@@ -94,7 +93,7 @@ textbook/
 ---
 
 ### ✅ Week 1: 初めての購入（完了）
-**ファイル**: [01_first_purchase/document.md](./01_first_purchase/document.md)
+**ファイル**: [textbook/01_first_purchase/document.md](./textbook/01_first_purchase/document.md)
 
 **学んだこと**:
 - 取引所の登録（Coincheck, MEXC）
@@ -179,8 +178,8 @@ CONCEPT_TREE.mdにチェック ✅
 
 ### 教材関連
 - **[CONCEPT_TREE.md](./CONCEPT_TREE.md)** - 概念チェックリスト（Tree構造）
-- **[00_foundations.md](./00_foundations.md)** - Week 0: 基礎知識
-- **[01_first_purchase/](./01_first_purchase/)** - Week 1: 初めての購入
+- **[textbook/00_foundations.md](./textbook/00_foundations.md)** - Week 0: 基礎知識
+- **[textbook/01_first_purchase/](./textbook/01_first_purchase/)** - Week 1: 初めての購入
 
 ### 管理・開発関連
 - **[../docs/curriculum/CURRICULUM_CREATION_MANUAL.md](../docs/curriculum/CURRICULUM_CREATION_MANUAL.md)** - 教材作成マニュアル
