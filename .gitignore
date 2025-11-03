@@ -63,3 +63,9 @@ backend/.env
 # Sample data files (exclude large data files)
 sample/data/timeseries/
 docs/curriculum/backup/
+
+# Price data (large parquet files)
+src/data/timeseries/prices/*.parquet
+
+# Claude settings
+.claude/settings.local.json
