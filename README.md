@@ -172,20 +172,25 @@ grass-coin-trader/
 │
 ├── symbols.txt                      # 対象銘柄リスト（40銘柄）
 │
-├── curriculum/                      # 📚 学習者向け教材
-│   ├── README.md
-│   ├── week1_basics.md
-│   ├── 02_rsi.md
-│   ├── 03_macd.md
-│   ├── 04_bollinger_bands.md
-│   ├── 05_arima_garch.md
-│   ├── 06_integrated_analysis.md
-│   └── 07_advanced_mathematical_methods.md
+├── curriculum/                      # 📚 カリキュラム（学習教材）
+│   ├── README.md                    # ← カリキュラム全体のマスターファイル
+│   ├── LEARNING_PATH.md             # 学習パス（3階層構造）
+│   ├── CONCEPT_TREE.md              # 概念チェックリスト
+│   ├── ROADMAP_TO_REALITY.md        # 現実的な100円→10000円ロードマップ
+│   └── textbook/                    # 教材本体
+│       ├── README.md                # 教材一覧
+│       ├── 00_foundations.md        # Week 0: 基礎知識
+│       └── 01_first_purchase/       # Week 1: 初めての購入
 │
-└── docs/                            # 📖 ドキュメント
+└── docs/                            # 📖 プロジェクトドキュメント
+    ├── README.md                    # ← ドキュメント全体のマスターファイル
+    ├── GETTING_STARTED.md           # セットアップ・使い方
+    ├── ROADMAP.md                   # 開発ロードマップ
     ├── ANALYSIS_METHODS.md          # 分析手法ガイド
-    ├── DOCS_INDEX.md
-    └── ...
+    ├── MEXC_API_SETUP.md            # MEXC API設定
+    ├── curriculum/                  # 教材作成マニュアル
+    ├── archive/                     # 古いドキュメント
+    └── userimported/                # ユーザー提供資料
 ```
 
 ---
@@ -233,36 +238,74 @@ python src/data/minute_data_collector.py --symbols SHIB
 
 ---
 
-## 📚 教材構成（100円→1000円チャレンジ）
+## 📚 カリキュラム - 100円から始める仮想通貨トレーディング
 
-### カリキュラム
+**→ [curriculum/README.md](curriculum/README.md) を参照（カリキュラム全体のマスターファイル）**
 
-| 教材 | タイトル | 内容 | 状態 |
-|------|---------|------|------|
-| [Week 1](curriculum/week1_basics.md) | 100円→110円 | 取引所登録、初取引 | ✅ 完成 |
-| [02_RSI](curriculum/02_rsi.md) | RSIの基礎 | 相対力指数の理解と実践 | ✅ 完成 |
-| [03_MACD](curriculum/03_macd.md) | MACDの基礎 | トレンド判定の実践 | ✅ 完成 |
-| [04_Bollinger](curriculum/04_bollinger_bands.md) | ボリンジャーバンド | ボラティリティ分析 | ✅ 完成 |
-| [05_ARIMA/GARCH](curriculum/05_arima_garch.md) | 伝統的予測モデル | 統計的時系列予測 | ✅ 完成 |
-| [06_統合分析](curriculum/06_integrated_analysis.md) | 全指標の統合 | 総合的な判断 | ✅ 完成 |
-| [07_GRU予測](curriculum/07_advanced_mathematical_methods.md) | 深層学習予測 | GRU/LSTMモデル | ✅ 完成 |
+### 📖 学習の進め方
 
-詳細: **[curriculum/README.md](curriculum/README.md)**
+1. **[curriculum/README.md](curriculum/README.md)** - カリキュラム全体の説明
+   - カリキュラムの特徴、現実的な期待値、限界
+
+2. **[curriculum/ROADMAP_TO_REALITY.md](curriculum/ROADMAP_TO_REALITY.md)** - 100円→10000円への現実的なロードマップ
+   - フェーズ1（100円→1000円）: テクニカル分析の基礎
+   - フェーズ2（1000円→5000円）: ファンダメンタルズ・センチメント分析
+   - フェーズ3（5000円→10000円）: 草コインへの挑戦
+
+3. **[curriculum/LEARNING_PATH.md](curriculum/LEARNING_PATH.md)** - 学習パス（3階層構造）
+   - Level 0: 抽象的大目標
+   - Level 1: 具体的目標（3フェーズ）
+   - Level 2: 概念チェックリスト & Week形式
+
+4. **[curriculum/CONCEPT_TREE.md](curriculum/CONCEPT_TREE.md)** - 概念チェックリスト
+   - Tree構造で習得状況を管理
+   - 順不同（必要なものから学ぶ）
+
+5. **[curriculum/textbook/](curriculum/textbook/)** - 教材本体
+   - Week 0: 基礎知識（RSI, MACD, BOLL） ✅ 完了
+   - Week 1: 初めての購入（100円チャレンジ） ✅ 完了
+   - Week 1.5以降: 実践で必要になった内容を動的に追加
+
+### 現在の進捗
+
+- ✅ **Week 0-1**: 完了（フェーズ1の基礎）
+- 📝 **Week 1.5以降**: あなた自身の実践（動的に作成）
+- **習得率**: 24%（11/46 概念）
 
 ---
 
 ## 📚 ドキュメント
 
-### 利用者向け
-- **[docs/ANALYSIS_METHODS.md](docs/ANALYSIS_METHODS.md)** - 利用可能な分析手法の全体像
-- **[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)** - セットアップ・使い方ガイド
+**→ [docs/README.md](docs/README.md) を参照（ドキュメント全体のマスターファイル）**
 
-### 学習者向け
-- **[curriculum/README.md](curriculum/README.md)** - 教材全体ガイド
+### 🎯 まず読むべきファイル
 
-### 開発者向け
-- **[ROADMAP.md](ROADMAP.md)** - 開発ロードマップ
-- **[docs/DOCS_INDEX.md](docs/DOCS_INDEX.md)** - 全ドキュメント索引
+#### 初めての方
+1. **[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)** - セットアップ・使い方ガイド
+2. **[curriculum/README.md](curriculum/README.md)** - カリキュラム全体の説明
+3. **[curriculum/LEARNING_PATH.md](curriculum/LEARNING_PATH.md)** - 学習の進め方
+
+#### 開発者・貢献者
+1. **[docs/ROADMAP.md](docs/ROADMAP.md)** - プロジェクト開発ロードマップ
+2. **[docs/curriculum/CURRICULUM_CREATION_MANUAL.md](docs/curriculum/CURRICULUM_CREATION_MANUAL.md)** - 教材作成マニュアル
+
+### 📖 ドキュメントカテゴリ
+
+- **プロジェクト全体ガイド**
+  - [GETTING_STARTED.md](docs/GETTING_STARTED.md) - セットアップ・使い方
+  - [ROADMAP.md](docs/ROADMAP.md) - 開発ロードマップ
+  - [ANALYSIS_METHODS.md](docs/ANALYSIS_METHODS.md) - 分析手法一覧
+
+- **API・設定ガイド**
+  - [MEXC_API_SETUP.md](docs/MEXC_API_SETUP.md) - MEXC API設定
+
+- **教材作成関連**
+  - [docs/curriculum/](docs/curriculum/) - 教材作成マニュアル
+
+- **カリキュラム（学習教材）**
+  - [curriculum/](curriculum/) - 学習者向け教材
+
+詳細は **[docs/README.md](docs/README.md)** を参照
 
 ---
 
